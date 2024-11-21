@@ -1,6 +1,7 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
 
 //import androidx.activity.EdgeToEdge;
@@ -10,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 //import androidx.core.view.WindowInsetsCompat;
 
 public class SettingsConfigurationItem extends AppCompatActivity {
+    Button activitySettingsConfigurationItemBackButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,5 +29,10 @@ public class SettingsConfigurationItem extends AppCompatActivity {
         TextView anomalyLabelView = findViewById(R.id.anomalyLabelTextViewItem);
 
         anomalyLabelView.setText(anomalyLabel);
+
+        activitySettingsConfigurationItemBackButton = findViewById(R.id.activitySettingsConfigurationItemBackButton);
+        activitySettingsConfigurationItemBackButton.setOnClickListener(v -> {
+            finish();
+        });
     }
 }

@@ -13,6 +13,9 @@
         android:theme="@style/Theme.MCO3JavaVersion"
         tools:targetApi="31">
         <activity
+            android:name=".AddLabel"
+            android:exported="false" />
+        <activity
             android:name=".SettingsConfigurationItem"
             android:exported="false" />
         <activity

@@ -63,6 +63,16 @@ public class SettingsCustomAdapter extends RecyclerView.Adapter<SettingsCustomAd
                 }
             });
 
+            // Handle button clicks
+            anomalyConfigButtonSetting.setOnClickListener(view -> {
+                if (settingsAdapterInterface != null) {
+                    int pos = getAdapterPosition();
+                    if (pos != RecyclerView.NO_POSITION) {
+                        settingsAdapterInterface.onButtonClick(pos);
+                    }
+                }
+            });
+
         }
     }
 }

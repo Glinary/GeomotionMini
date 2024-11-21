@@ -2,6 +2,7 @@ package com.mobdeve.s11.mco3.mco3javaversion;
 
 import android.database.Cursor;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +23,7 @@ public class RecordingItem extends AppCompatActivity {
     ArrayList<String> coordinatesList;
     CoordinatesAdapter coordinatesAdapter;
     ArrayList<String> anomalyList;
+    Button returnButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +58,11 @@ public class RecordingItem extends AppCompatActivity {
         coordinatesAdapter = new CoordinatesAdapter(this, coordinatesList, anomalyList);
         recyclerView.setAdapter(coordinatesAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        returnButton = findViewById(R.id.activityRecordingItemBackButton);
+        returnButton.setOnClickListener(v -> {
+            finish();
+        });
 
     }
 

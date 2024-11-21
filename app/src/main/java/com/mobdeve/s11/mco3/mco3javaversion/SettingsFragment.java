@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 
@@ -24,6 +26,7 @@ public class SettingsFragment extends Fragment implements SettingsAdapterInterfa
     MyDatabaseHelper myDB;
     ArrayList<String> anomalyLabel;
     SettingsCustomAdapter settingsCustomAdapter;
+    Button addLabelButton;
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -72,11 +75,17 @@ public class SettingsFragment extends Fragment implements SettingsAdapterInterfa
         View view = inflater.inflate(R.layout.fragment_settings, container, false);
 
         recyclerView = view.findViewById(R.id.configRecyclerView);
+        addLabelButton = view.findViewById(R.id.addLabelButtonOrigin);
 
         myDB = new MyDatabaseHelper(requireContext());
         anomalyLabel = new ArrayList<String>();
 
         storeDataInArrays();
+
+        addLabelButton.setOnClickListener( v -> {
+            Intent intent = new Intent(requireContext(), AddLabel.class);
+            startActivity(intent);
+        });
         settingsCustomAdapter = new SettingsCustomAdapter(requireContext(),
                 anomalyLabel, this);
         recyclerView.setAdapter(settingsCustomAdapter);
@@ -88,7 +97,7 @@ public class SettingsFragment extends Fragment implements SettingsAdapterInterfa
         Cursor cursor = myDB.getAllAnomalyNames();
         if (cursor != null) {
             while (cursor.moveToNext()) {
-                String anomalyName = cursor.getString(cursor.getColumnIndexOrThrow("anomaly"));
+                String anomalyName = cursor.getString(cursor.getColumnIndexOrThrow("anomaly_name"));
                 anomalyLabel.add(anomalyName);
             }
             cursor.close();
@@ -97,6 +106,14 @@ public class SettingsFragment extends Fragment implements SettingsAdapterInterfa
 
     @Override
     public void onItemClick(int position) {
+        Intent intent = new Intent(requireContext(), SettingsConfigurationItem.class);
+        intent.putExtra("ANOMALY_LABEL", anomalyLabel.get(position));
+
+        startActivity(intent);
+    }
+
+    @Override
+    public void onButtonClick(int position) {
         Intent intent = new Intent(requireContext(), SettingsConfigurationItem.class);
         intent.putExtra("ANOMALY_LABEL", anomalyLabel.get(position));
 

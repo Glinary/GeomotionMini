@@ -27,6 +27,10 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN2_LONGITUDE = "longitude";
     private static final String COLUMN2_ANOMALY = "anomaly";
 
+    private static final String TABLE3_NAME = "anomaly_table";
+    private static final String COLUMN3_ID = "anomaly_id";
+    private static final String COLUMN3_ANOMALY_NAME = "anomaly_name";
+
 
     public MyDatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -35,27 +39,40 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String createRecordingsTable = "CREATE TABLE " + TABLE_NAME +
-                " (" + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                COLUMN_DATE + " TEXT, " +
-                COLUMN_TIMESTAMP + " TEXT);";
-        db.execSQL(createRecordingsTable);
+        String createAnomalyTableQuery = "CREATE TABLE " + TABLE3_NAME + "(" +
+                COLUMN3_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN3_ANOMALY_NAME + " TEXT UNIQUE NOT NULL);";
+        db.execSQL(createAnomalyTableQuery);
+
+        // Step 2: Populate anomaly_table with initial allowed values
+        String insertInitialAnomaliesQuery = "INSERT INTO " + TABLE3_NAME + " (" + COLUMN3_ANOMALY_NAME + ") VALUES " +
+                "('Pothole'), ('Road Crack'), ('Speed Bump');"; // Add more as needed
+        db.execSQL(insertInitialAnomaliesQuery);
 
         String createCoordinatesTable = "CREATE TABLE " + TABLE2_NAME +
                 " (" + COLUMN2_COORDINATE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COLUMN2_RECORDING_ID + " INTEGER, " +
                 COLUMN2_LATITUDE + " REAL," +
                 COLUMN2_LONGITUDE + " REAL," +
-                COLUMN2_ANOMALY + " TEXT," +
+                COLUMN2_ANOMALY + " TEXT NOT NULL," +
+                "FOREIGN KEY(" + COLUMN2_ANOMALY + ") REFERENCES " + TABLE3_NAME + "(" + COLUMN3_ANOMALY_NAME + ") ON DELETE RESTRICT, " +
                 "FOREIGN KEY(" + COLUMN2_RECORDING_ID + ") REFERENCES " + TABLE_NAME + "(" + COLUMN_ID + "));";
         db.execSQL(createCoordinatesTable);
+
+        String createRecordingsTable = "CREATE TABLE " + TABLE_NAME +
+                " (" + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN_DATE + " TEXT, " +
+                COLUMN_TIMESTAMP + " TEXT);";
+        db.execSQL(createRecordingsTable);
 
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int i, int i1) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE3_NAME); // Drop anomaly_table
         db.execSQL("DROP TABLE IF EXISTS " + TABLE2_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+
         onCreate(db);
     }
 
@@ -90,10 +107,10 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
 
-        cv.put("recording_id", recordingId);
-        cv.put("latitude", latitude);
-        cv.put("longitude", longitude);
-        cv.put("anomaly", anomaly);
+        cv.put(COLUMN2_RECORDING_ID, recordingId);
+        cv.put(COLUMN2_LATITUDE, latitude);
+        cv.put(COLUMN2_LONGITUDE, longitude);
+        cv.put(COLUMN2_ANOMALY, anomaly);
 
         long result = db.insert("coordinates_table", null, cv);
         if (result == -1) {
@@ -116,9 +133,23 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     }
 
+    public void addAllowedAnomaly(String anomalyName) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("anomaly_name", anomalyName);
+
+        long result = db.insert("anomaly_table", null, cv);
+        if (result == -1) {
+            Toast.makeText(context, "Failed to add anomaly", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(context, "Anomaly added successfully", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
     public Cursor getAllAnomalyNames() {
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT DISTINCT " + COLUMN2_ANOMALY + " FROM " + TABLE2_NAME;
+        String query = "SELECT " + COLUMN3_ANOMALY_NAME + " FROM " + TABLE3_NAME;
 
         // Execute the query and return the cursor with results
         return db.rawQuery(query, null);
