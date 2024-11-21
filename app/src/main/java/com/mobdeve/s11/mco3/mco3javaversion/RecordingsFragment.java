@@ -26,6 +26,7 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
     RecyclerView recyclerview;
     MyDatabaseHelper myDB;
     ArrayList<String> recordingDate, recordingTimestamp;
+    ArrayList<Integer> recordingId;
     RecordingCustomAdapter recordingCustomAdapter;
 
     // TODO: Rename parameter arguments, choose names that match
@@ -78,10 +79,11 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
         myDB = new MyDatabaseHelper(requireContext());
         recordingDate = new ArrayList<String>();
         recordingTimestamp = new ArrayList<String>();
+        recordingId = new ArrayList<Integer>();
 
         storeDataInArrays();
-//
-        recordingCustomAdapter = new RecordingCustomAdapter(requireContext(),recordingDate, recordingTimestamp, this);
+        recordingCustomAdapter = new RecordingCustomAdapter(requireContext(),
+                                                            recordingDate, recordingTimestamp, recordingId, this);
         recyclerview.setAdapter(recordingCustomAdapter);
         recyclerview.setLayoutManager(new LinearLayoutManager(requireContext()));
         return view;
@@ -93,6 +95,7 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
             Toast.makeText(requireContext(), "No Data ", Toast.LENGTH_SHORT).show();
         } else {
             while (cursor.moveToNext()) {
+                recordingId.add(cursor.getInt(cursor.getColumnIndexOrThrow("_id")));
                 recordingDate.add(cursor.getString(cursor.getColumnIndexOrThrow("recording_date")));
                 recordingTimestamp.add(cursor.getString(cursor.getColumnIndexOrThrow("recording_timestamp")));
             }
@@ -102,6 +105,7 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
     @Override
     public void onItemClick(int position) {
         Intent intent = new Intent(requireContext(), RecordingItem.class);
+        intent.putExtra("RECORDING_ID", recordingId.get(position));
         intent.putExtra("DATE", recordingDate.get(position));
         intent.putExtra("TIMESTAMP", recordingTimestamp.get(position));
 

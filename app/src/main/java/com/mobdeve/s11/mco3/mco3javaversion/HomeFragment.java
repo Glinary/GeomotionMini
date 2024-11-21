@@ -79,6 +79,7 @@ public class HomeFragment extends Fragment {
 
                 MyDatabaseHelper myDB = new MyDatabaseHelper(requireContext());
                 myDB.addRecording(currentDate, currentTimestamp);
+                myDB.addCoordinate(1, 1.0, 2.0);
             }
         });
 

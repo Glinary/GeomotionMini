@@ -20,6 +20,13 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_DATE = "recording_date";
     private static final String COLUMN_TIMESTAMP = "recording_timestamp";
 
+    private static final String TABLE2_NAME = "coordinates_table";
+    private static final String COLUMN2_COORDINATE_ID = "coordinate_id";
+    private static final String COLUMN2_RECORDING_ID = "recording_id";
+    private static final String COLUMN2_LATITUDE = "latitude";
+    private static final String COLUMN2_LONGITUDE = "longitude";
+
+
     public MyDatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.context = context;
@@ -27,17 +34,26 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String query = "CREATE TABLE " + TABLE_NAME +
-                        " (" + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        COLUMN_DATE + " TEXT, " +
-                        COLUMN_TIMESTAMP + " TEXT);";
-        db.execSQL(query);
+        String createRecordingsTable = "CREATE TABLE " + TABLE_NAME +
+                " (" + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN_DATE + " TEXT, " +
+                COLUMN_TIMESTAMP + " TEXT);";
+        db.execSQL(createRecordingsTable);
+
+        String createCoordinatesTable = "CREATE TABLE " + TABLE2_NAME +
+                " (" + COLUMN2_COORDINATE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN2_RECORDING_ID + " INTEGER, " +
+                COLUMN2_LATITUDE + " REAL," +
+                COLUMN2_LONGITUDE + " REAL," +
+                "FOREIGN KEY(" + COLUMN2_RECORDING_ID + ") REFERENCES " + TABLE_NAME + "(" + COLUMN_ID + "));";
+        db.execSQL(createCoordinatesTable);
 
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int i, int i1) {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE2_NAME);
         onCreate(db);
     }
 
@@ -65,5 +81,34 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         }
 
         return cursor;
+    }
+
+    void addCoordinate(int recordingId, double latitude, double longitude) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+
+        cv.put("recording_id", recordingId);
+        cv.put("latitude", latitude);
+        cv.put("longitude", longitude);
+
+        long result = db.insert("coordinates_table", null, cv);
+        if (result == -1) {
+            Toast.makeText(context, "Failed to add coordinate", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(context, "Coordinate added", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    Cursor getCoordinates(int recordingId) {
+        String query = "SELECT " + COLUMN2_LATITUDE + ", " + COLUMN2_LONGITUDE +
+                " FROM " + TABLE2_NAME + " WHERE " + COLUMN2_RECORDING_ID + " = ?";
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(query, new String[]{String.valueOf(recordingId)});
+        }
+        return cursor;
+
     }
 }

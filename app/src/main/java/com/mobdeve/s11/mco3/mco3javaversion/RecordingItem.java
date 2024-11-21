@@ -1,15 +1,26 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.database.Cursor;
 import android.os.Bundle;
 import android.widget.TextView;
+import android.widget.Toast;
 
 //import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import java.util.ArrayList;
 //import androidx.core.graphics.Insets;
 //import androidx.core.view.ViewCompat;
 //import androidx.core.view.WindowInsetsCompat;
 
 public class RecordingItem extends AppCompatActivity {
+
+    RecyclerView recyclerView;
+    MyDatabaseHelper myDB;
+    ArrayList<String> coordinatesList;
+    CoordinatesAdapter coordinatesAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,12 +34,43 @@ public class RecordingItem extends AppCompatActivity {
 //        });
         String date = getIntent().getStringExtra("DATE");
         String timestamp = getIntent().getStringExtra("TIMESTAMP");
+        int recordingId = getIntent().getIntExtra("RECORDING_ID", -1);
 
         TextView dateView = findViewById(R.id.dateHeader);
         TextView timestampView = findViewById(R.id.timestampHeader);
 
         dateView.setText(date);
         timestampView.setText(timestamp);
+
+        //Recyclerview
+
+        recyclerView = findViewById(R.id.coordinatesRecyclerView);
+
+        myDB = new MyDatabaseHelper(this);
+        coordinatesList = new ArrayList<>();
+
+        storeDataInArrays(recordingId);
+
+        coordinatesAdapter = new CoordinatesAdapter(this, coordinatesList);
+        recyclerView.setAdapter(coordinatesAdapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+
+    }
+
+    void storeDataInArrays(int recordingId) {
+        Cursor cursor = myDB.getCoordinates(recordingId);
+        if (cursor == null) {
+            Toast.makeText(this, "DB is null", Toast.LENGTH_SHORT).show();
+        } else if (cursor.getCount() == 0) {
+            Toast.makeText(this, "No Data Found", Toast.LENGTH_SHORT).show();
+        } else {
+            while (cursor.moveToNext()) {
+                double latitude = cursor.getDouble(cursor.getColumnIndexOrThrow("latitude"));
+                double longitude = cursor.getDouble(cursor.getColumnIndexOrThrow("longitude"));
+                coordinatesList.add("Lat: " + latitude + ", Lon: " + longitude);
+            }
+        }
 
     }
 }

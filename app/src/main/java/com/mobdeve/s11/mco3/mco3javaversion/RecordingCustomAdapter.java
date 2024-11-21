@@ -15,12 +15,14 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
     private final RecordingAdapterInterface recordingAdapterInterface;
     private Context context;
     private ArrayList<String> recordingDate, recordingTimestamp;
+    private ArrayList<Integer> recordingId;
 
-    RecordingCustomAdapter(Context context, ArrayList<String> recordingDate, ArrayList<String> recordingTimestamp,
+    RecordingCustomAdapter(Context context, ArrayList<String> recordingDate, ArrayList<String> recordingTimestamp, ArrayList<Integer> recordingId,
                             RecordingAdapterInterface recordingAdapterInterface) {
         this.context = context;
         this.recordingDate = recordingDate;
         this.recordingTimestamp = recordingTimestamp;
+        this.recordingId = recordingId;
         this.recordingAdapterInterface = recordingAdapterInterface;
     }
 
@@ -36,6 +38,7 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
     public void onBindViewHolder(@NonNull RecordingCustomAdapter.MyViewHolder holder, int position) {
         holder.recordingDate.setText(String.valueOf(recordingDate.get(position)));
         holder.recordingTimestamp.setText(String.valueOf(recordingTimestamp.get(position)));
+        holder.recordingId.setText(String.valueOf(recordingId.get(position)));
     }
 
     @Override
@@ -45,12 +48,13 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
 
     public static class MyViewHolder extends RecyclerView.ViewHolder{
 
-        TextView recordingDate, recordingTimestamp;
+        TextView recordingDate, recordingTimestamp, recordingId;
 
         public MyViewHolder(@NonNull View itemView, RecordingAdapterInterface recordingAdapterInterface) {
             super(itemView);
             recordingDate = itemView.findViewById(R.id.tv_recDate);
             recordingTimestamp = itemView.findViewById(R.id.tv_recTimestamp);
+            recordingId = itemView.findViewById(R.id.tv_recordingId);
 
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
