@@ -1,5 +1,6 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 
@@ -18,7 +19,7 @@ import java.util.ArrayList;
  * Use the {@link SettingsFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class SettingsFragment extends Fragment {
+public class SettingsFragment extends Fragment implements SettingsAdapterInterface{
     RecyclerView recyclerView;
     MyDatabaseHelper myDB;
     ArrayList<String> anomalyLabel;
@@ -77,7 +78,7 @@ public class SettingsFragment extends Fragment {
 
         storeDataInArrays();
         settingsCustomAdapter = new SettingsCustomAdapter(requireContext(),
-                anomalyLabel);
+                anomalyLabel, this);
         recyclerView.setAdapter(settingsCustomAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         return view;
@@ -92,5 +93,13 @@ public class SettingsFragment extends Fragment {
             }
             cursor.close();
         }
+    }
+
+    @Override
+    public void onItemClick(int position) {
+        Intent intent = new Intent(requireContext(), SettingsConfigurationItem.class);
+        intent.putExtra("ANOMALY_LABEL", anomalyLabel.get(position));
+
+        startActivity(intent);
     }
 }

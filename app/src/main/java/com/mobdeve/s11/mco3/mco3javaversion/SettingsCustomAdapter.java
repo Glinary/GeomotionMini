@@ -15,10 +15,12 @@ import java.util.ArrayList;
 public class SettingsCustomAdapter extends RecyclerView.Adapter<SettingsCustomAdapter.ViewHolder> {
     private Context context;
     private ArrayList<String> anomalyLabel;
+    private SettingsAdapterInterface settingsAdapterInterface;
 
-    SettingsCustomAdapter(Context context, ArrayList<String> anomalyLabel) {
+    SettingsCustomAdapter(Context context, ArrayList<String> anomalyLabel, SettingsAdapterInterface settingsAdapterInterface) {
         this.context = context;
         this.anomalyLabel = anomalyLabel;
+        this.settingsAdapterInterface = settingsAdapterInterface;
 
     }
     @NonNull
@@ -26,7 +28,7 @@ public class SettingsCustomAdapter extends RecyclerView.Adapter<SettingsCustomAd
     public SettingsCustomAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(context);
         View view = inflater.inflate(R.layout.configuration_list, parent, false);
-        return new SettingsCustomAdapter.ViewHolder(view);
+        return new SettingsCustomAdapter.ViewHolder(view, settingsAdapterInterface);
     }
 
     @Override
@@ -42,11 +44,24 @@ public class SettingsCustomAdapter extends RecyclerView.Adapter<SettingsCustomAd
     public static class ViewHolder extends RecyclerView.ViewHolder{
         TextView anomalyLabel;
         Button anomalyConfigButtonSetting;
-        public ViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView, SettingsAdapterInterface settingsAdapterInterface) {
             super(itemView);
 
             anomalyLabel = itemView.findViewById(R.id.anomalyTextViewSetting);
             anomalyConfigButtonSetting = itemView.findViewById(R.id.anomalyConfigButtonSetting);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (settingsAdapterInterface != null) {
+                        int pos = getAdapterPosition();
+
+                        if (pos != RecyclerView.NO_POSITION) {
+                            settingsAdapterInterface.onItemClick(pos);
+                        }
+                    }
+                }
+            });
 
         }
     }
