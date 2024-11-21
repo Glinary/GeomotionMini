@@ -21,6 +21,7 @@ public class RecordingItem extends AppCompatActivity {
     MyDatabaseHelper myDB;
     ArrayList<String> coordinatesList;
     CoordinatesAdapter coordinatesAdapter;
+    ArrayList<String> anomalyList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,13 +49,13 @@ public class RecordingItem extends AppCompatActivity {
 
         myDB = new MyDatabaseHelper(this);
         coordinatesList = new ArrayList<>();
+        anomalyList = new ArrayList<String>();
 
         storeDataInArrays(recordingId);
 
-        coordinatesAdapter = new CoordinatesAdapter(this, coordinatesList);
+        coordinatesAdapter = new CoordinatesAdapter(this, coordinatesList, anomalyList);
         recyclerView.setAdapter(coordinatesAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
 
     }
 
@@ -69,6 +70,7 @@ public class RecordingItem extends AppCompatActivity {
                 double latitude = cursor.getDouble(cursor.getColumnIndexOrThrow("latitude"));
                 double longitude = cursor.getDouble(cursor.getColumnIndexOrThrow("longitude"));
                 coordinatesList.add("Lat: " + latitude + ", Lon: " + longitude);
+                anomalyList.add(cursor.getString(cursor.getColumnIndexOrThrow("anomaly")));
             }
         }
 

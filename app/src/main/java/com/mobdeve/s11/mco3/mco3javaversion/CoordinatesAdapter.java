@@ -14,11 +14,13 @@ import java.util.ArrayList;
 public class CoordinatesAdapter extends RecyclerView.Adapter<CoordinatesAdapter.ViewHolder> {
 
     private ArrayList<String> coordinatesList;
+    private ArrayList<String> anomalyList;
     private Context context;
 
-    public CoordinatesAdapter(Context context, ArrayList<String> coordinatesList) {
+    public CoordinatesAdapter(Context context, ArrayList<String> coordinatesList, ArrayList<String> anomalyList) {
         this.context = context;
         this.coordinatesList = coordinatesList;
+        this.anomalyList = anomalyList;
     }
 
 
@@ -34,6 +36,7 @@ public class CoordinatesAdapter extends RecyclerView.Adapter<CoordinatesAdapter.
     @Override
     public void onBindViewHolder(@NonNull CoordinatesAdapter.ViewHolder holder, int position) {
         holder.coordinateTextView.setText(coordinatesList.get(position));
+        holder.anomalyTextView.setText(anomalyList.get(position));
     }
 
     @Override
@@ -42,11 +45,12 @@ public class CoordinatesAdapter extends RecyclerView.Adapter<CoordinatesAdapter.
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView coordinateTextView;
+        TextView coordinateTextView, anomalyTextView;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             coordinateTextView = itemView.findViewById(R.id.coordinateTextView);
+            anomalyTextView = itemView.findViewById(R.id.anomalyTextView);
         }
     }
 }

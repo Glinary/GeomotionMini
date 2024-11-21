@@ -25,6 +25,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN2_RECORDING_ID = "recording_id";
     private static final String COLUMN2_LATITUDE = "latitude";
     private static final String COLUMN2_LONGITUDE = "longitude";
+    private static final String COLUMN2_ANOMALY = "anomaly";
 
 
     public MyDatabaseHelper(@Nullable Context context) {
@@ -45,6 +46,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN2_RECORDING_ID + " INTEGER, " +
                 COLUMN2_LATITUDE + " REAL," +
                 COLUMN2_LONGITUDE + " REAL," +
+                COLUMN2_ANOMALY + " TEXT," +
                 "FOREIGN KEY(" + COLUMN2_RECORDING_ID + ") REFERENCES " + TABLE_NAME + "(" + COLUMN_ID + "));";
         db.execSQL(createCoordinatesTable);
 
@@ -57,18 +59,19 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    void addRecording(String date, String timestamp) {
+    long addRecording(String date, String timestamp) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
 
         cv.put(COLUMN_DATE, date);
         cv.put(COLUMN_TIMESTAMP, timestamp);
-        long result = db.insert(TABLE_NAME, null, cv);
-        if (result == -1) {
+        long row_result = db.insert(TABLE_NAME, null, cv);
+        if (row_result == -1) {
             Toast.makeText(context, "Recording failed", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(context, "Recording successful", Toast.LENGTH_SHORT).show();
         }
+        return row_result;
     }
 
     Cursor readAllData() {
@@ -83,24 +86,25 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         return cursor;
     }
 
-    void addCoordinate(int recordingId, double latitude, double longitude) {
+    void addCoordinate(int recordingId, double latitude, double longitude, String anomaly) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
 
         cv.put("recording_id", recordingId);
         cv.put("latitude", latitude);
         cv.put("longitude", longitude);
+        cv.put("anomaly", anomaly);
 
         long result = db.insert("coordinates_table", null, cv);
         if (result == -1) {
-            Toast.makeText(context, "Failed to add coordinate", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Failed to add anomaly", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(context, "Coordinate added", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Anomaly added", Toast.LENGTH_SHORT).show();
         }
     }
 
     Cursor getCoordinates(int recordingId) {
-        String query = "SELECT " + COLUMN2_LATITUDE + ", " + COLUMN2_LONGITUDE +
+        String query = "SELECT " + COLUMN2_LATITUDE + ", " + COLUMN2_LONGITUDE + ", " + COLUMN2_ANOMALY+
                 " FROM " + TABLE2_NAME + " WHERE " + COLUMN2_RECORDING_ID + " = ?";
         SQLiteDatabase db = this.getReadableDatabase();
 
@@ -111,4 +115,13 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         return cursor;
 
     }
+
+    public Cursor getAllAnomalyNames() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT DISTINCT " + COLUMN2_ANOMALY + " FROM " + TABLE2_NAME;
+
+        // Execute the query and return the cursor with results
+        return db.rawQuery(query, null);
+    }
+
 }

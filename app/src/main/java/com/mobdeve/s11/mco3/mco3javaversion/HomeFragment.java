@@ -1,5 +1,10 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -17,18 +22,14 @@ import java.util.Date;
  * Use the {@link HomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements SensorEventListener {
 
     Button recordingButton;
-
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private MyDatabaseHelper myDB;
+    private long recordingId; // Track the current recording ID
+    private boolean isRecording = false; // Flag to track recording state
 
     public HomeFragment() {
         // Required empty public constructor
@@ -42,12 +43,9 @@ public class HomeFragment extends Fragment {
      * @param param2 Parameter 2.
      * @return A new instance of fragment HomeFragment.
      */
-    // TODO: Rename and change types and number of parameters
     public static HomeFragment newInstance(String param1, String param2) {
         HomeFragment fragment = new HomeFragment();
         Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
         fragment.setArguments(args);
         return fragment;
     }
@@ -55,10 +53,14 @@ public class HomeFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+        // Initialize SensorManager and Accelerometer
+        sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
+
+        // Initialize database helper
+        myDB = new MyDatabaseHelper(requireContext());
     }
 
     @Override
@@ -71,18 +73,63 @@ public class HomeFragment extends Fragment {
         recordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                SimpleDateFormat formatter1 = new SimpleDateFormat("yyyy-MM-dd");
-                SimpleDateFormat formatter2 = new SimpleDateFormat("HH:mm:ss");
-                Date date = new Date();
-                String currentDate = formatter1.format(date);
-                String currentTimestamp = formatter2.format(date);
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
 
-                MyDatabaseHelper myDB = new MyDatabaseHelper(requireContext());
-                myDB.addRecording(currentDate, currentTimestamp);
-                myDB.addCoordinate(1, 1.0, 2.0);
             }
         });
 
         return view;
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            // Check for specific X, Y, Z values (e.g., detect bumps)
+            if (Math.abs(x) > 10 || Math.abs(y) > 10 || Math.abs(z) > 20) {
+                // Add a coordinate entry with the detected anomaly
+                myDB.addCoordinate((int) recordingId, x, y, "Anomaly Detected");
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
+    }
+
+    private void startRecording() {
+        // Create a new recording
+        SimpleDateFormat formatter1 = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat formatter2 = new SimpleDateFormat("HH:mm:ss");
+        Date date = new Date();
+        String currentDate = formatter1.format(date);
+        String currentTimestamp = formatter2.format(date);
+
+        recordingId = myDB.addRecording(currentDate, currentTimestamp); // Get the recording ID
+        isRecording = true;
+        recordingButton.setText("Stop Recording");
+
+        // Start listening to accelerometer events
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    private void stopRecording() {
+        isRecording = false;
+        recordingButton.setText("Start Recording");
+
+        // Stop listening to accelerometer events
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
     }
 }

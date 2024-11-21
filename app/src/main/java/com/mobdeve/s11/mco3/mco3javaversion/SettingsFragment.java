@@ -1,12 +1,17 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.database.Cursor;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import java.util.ArrayList;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -14,6 +19,10 @@ import android.view.ViewGroup;
  * create an instance of this fragment.
  */
 public class SettingsFragment extends Fragment {
+    RecyclerView recyclerView;
+    MyDatabaseHelper myDB;
+    ArrayList<String> anomalyLabel;
+    SettingsCustomAdapter settingsCustomAdapter;
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -59,6 +68,29 @@ public class SettingsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_settings, container, false);
+        View view = inflater.inflate(R.layout.fragment_settings, container, false);
+
+        recyclerView = view.findViewById(R.id.configRecyclerView);
+
+        myDB = new MyDatabaseHelper(requireContext());
+        anomalyLabel = new ArrayList<String>();
+
+        storeDataInArrays();
+        settingsCustomAdapter = new SettingsCustomAdapter(requireContext(),
+                anomalyLabel);
+        recyclerView.setAdapter(settingsCustomAdapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        return view;
+    }
+
+    void storeDataInArrays() {
+        Cursor cursor = myDB.getAllAnomalyNames();
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String anomalyName = cursor.getString(cursor.getColumnIndexOrThrow("anomaly"));
+                anomalyLabel.add(anomalyName);
+            }
+            cursor.close();
+        }
     }
 }
