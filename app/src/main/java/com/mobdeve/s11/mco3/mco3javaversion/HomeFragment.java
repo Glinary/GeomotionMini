@@ -13,6 +13,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -59,8 +60,11 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
 
-        // Initialize database helper
+//        // Initialize database helper
         myDB = new MyDatabaseHelper(requireContext());
+
+        // Uncomment drop when using version used by other
+//        myDB.dropTable();
     }
 
     @Override
@@ -91,6 +95,9 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             float x = event.values[0];
             float y = event.values[1];
             float z = event.values[2];
+
+            Toast.makeText(requireContext(), Float.toString(x), Toast.LENGTH_SHORT).show();
+
 
             // Check for specific X, Y, Z values (e.g., detect bumps)
             if (Math.abs(x) > 10 || Math.abs(y) > 10 || Math.abs(z) > 20) {

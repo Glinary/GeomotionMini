@@ -3,27 +3,42 @@ package com.mobdeve.s11.mco3.mco3javaversion;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-//import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 //import androidx.core.graphics.Insets;
 //import androidx.core.view.ViewCompat;
 //import androidx.core.view.WindowInsetsCompat;
 
-public class RecordingItem extends AppCompatActivity {
+public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallback {
 
     RecyclerView recyclerView;
     MyDatabaseHelper myDB;
-    ArrayList<String> coordinatesList;
+    List<Map<String, Double>> coordinatesList;
     CoordinatesAdapter coordinatesAdapter;
     ArrayList<String> anomalyList;
     Button returnButton;
+    ImageView maps;
+    private GoogleMap myMap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +79,10 @@ public class RecordingItem extends AppCompatActivity {
             finish();
         });
 
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
+        Toast.makeText(this, Integer.toString(coordinatesList.size()), Toast.LENGTH_SHORT).show();
     }
 
     void storeDataInArrays(int recordingId) {
@@ -74,12 +93,45 @@ public class RecordingItem extends AppCompatActivity {
             Toast.makeText(this, "No Data Found", Toast.LENGTH_SHORT).show();
         } else {
             while (cursor.moveToNext()) {
+                HashMap<String, Double> coordinate = new HashMap<>();
                 double latitude = cursor.getDouble(cursor.getColumnIndexOrThrow("latitude"));
                 double longitude = cursor.getDouble(cursor.getColumnIndexOrThrow("longitude"));
-                coordinatesList.add("Lat: " + latitude + ", Lon: " + longitude);
+                coordinate.put("lat", latitude);
+                coordinate.put("lon", longitude);
+                coordinatesList.add(coordinate);
                 anomalyList.add(cursor.getString(cursor.getColumnIndexOrThrow("anomaly")));
             }
         }
+
+    }
+
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        myMap = googleMap;
+        int count = 0;
+
+        for (Map<String, Double> coordinate : coordinatesList) {
+            double latitude = coordinate.get("lat");
+            double longitude = coordinate.get("lon");
+
+            LatLng location = new LatLng(latitude, longitude);
+
+            BitmapDescriptor customIcon = BitmapDescriptorFactory.fromResource(R.drawable.circle);
+
+            myMap.addMarker(new MarkerOptions().position(location).title("Anomaly").icon(customIcon));
+            count++;
+
+
+
+
+        }
+        Toast.makeText(this, Integer.toString(count), Toast.LENGTH_SHORT).show();
+
+
+//        LatLng sydney = new LatLng(-34,151);
+//        myMap.addMarker(new MarkerOptions().position(sydney).title("Sydney"));
+//        float zoomLevel = 14.0f;
+//        myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sydney, zoomLevel));
 
     }
 }

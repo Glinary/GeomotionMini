@@ -1,9 +1,14 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
 import android.annotation.SuppressLint;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,11 +27,14 @@ import java.util.Date;
 public class MainActivity extends AppCompatActivity {
 
     ActivityMainBinding binding;
+    private MyDatabaseHelper myDB;
 
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+
         super.onCreate(savedInstanceState);
 //        EdgeToEdge.enable(this);
         binding = ActivityMainBinding.inflate(getLayoutInflater());

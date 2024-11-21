@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -13,7 +14,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     private Context context;
     private static final String DATABASE_NAME = "Recordings.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     private static final String TABLE_NAME = "my_recording";
     private static final String COLUMN_ID = "_id";
@@ -39,6 +40,9 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
+
+        Toast.makeText(this.context, "DB INITIALIZED", Toast.LENGTH_SHORT).show();
+
         String createAnomalyTableQuery = "CREATE TABLE " + TABLE3_NAME + "(" +
                 COLUMN3_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COLUMN3_ANOMALY_NAME + " TEXT UNIQUE NOT NULL);";
@@ -74,6 +78,18 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
 
         onCreate(db);
+    }
+
+    // Use only when needed
+    void dropTable() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE3_NAME); // Drop anomaly_table
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE2_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+
+        onCreate(db);
+
+        Toast.makeText(this.context, "DB DROPPED", Toast.LENGTH_SHORT).show();
     }
 
     long addRecording(String date, String timestamp) {
