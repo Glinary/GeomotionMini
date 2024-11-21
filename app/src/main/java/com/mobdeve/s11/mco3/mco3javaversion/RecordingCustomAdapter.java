@@ -12,14 +12,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 
 public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustomAdapter.MyViewHolder> {
-
+    private final RecordingAdapterInterface recordingAdapterInterface;
     private Context context;
     private ArrayList<String> recordingDate, recordingTimestamp;
 
-    RecordingCustomAdapter(Context context, ArrayList<String> recordingDate, ArrayList<String> recordingTimestamp) {
+    RecordingCustomAdapter(Context context, ArrayList<String> recordingDate, ArrayList<String> recordingTimestamp,
+                            RecordingAdapterInterface recordingAdapterInterface) {
         this.context = context;
         this.recordingDate = recordingDate;
         this.recordingTimestamp = recordingTimestamp;
+        this.recordingAdapterInterface = recordingAdapterInterface;
     }
 
     @NonNull
@@ -27,7 +29,7 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
     public RecordingCustomAdapter.MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(context);
         View view = inflater.inflate(R.layout.recording_list_item, parent, false);
-        return new MyViewHolder(view);
+        return new MyViewHolder(view, recordingAdapterInterface);
     }
 
     @Override
@@ -45,10 +47,23 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
 
         TextView recordingDate, recordingTimestamp;
 
-        public MyViewHolder(@NonNull View itemView) {
+        public MyViewHolder(@NonNull View itemView, RecordingAdapterInterface recordingAdapterInterface) {
             super(itemView);
             recordingDate = itemView.findViewById(R.id.tv_recDate);
             recordingTimestamp = itemView.findViewById(R.id.tv_recTimestamp);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (recordingAdapterInterface != null) {
+                        int pos = getAdapterPosition();
+
+                        if (pos != RecyclerView.NO_POSITION) {
+                            recordingAdapterInterface.onItemClick(pos);
+                        }
+                    }
+                }
+            });
 
         }
     }

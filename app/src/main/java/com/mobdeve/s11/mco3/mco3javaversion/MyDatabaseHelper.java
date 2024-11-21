@@ -32,6 +32,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
                         COLUMN_DATE + " TEXT, " +
                         COLUMN_TIMESTAMP + " TEXT);";
         db.execSQL(query);
+
     }
 
     @Override

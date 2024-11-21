@@ -1,5 +1,6 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 
@@ -20,7 +21,7 @@ import java.util.ArrayList;
  * Use the {@link RecordingsFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class RecordingsFragment extends Fragment {
+public class RecordingsFragment extends Fragment implements RecordingAdapterInterface{
 
     RecyclerView recyclerview;
     MyDatabaseHelper myDB;
@@ -80,7 +81,7 @@ public class RecordingsFragment extends Fragment {
 
         storeDataInArrays();
 //
-        recordingCustomAdapter = new RecordingCustomAdapter(requireContext(),recordingDate, recordingTimestamp);
+        recordingCustomAdapter = new RecordingCustomAdapter(requireContext(),recordingDate, recordingTimestamp, this);
         recyclerview.setAdapter(recordingCustomAdapter);
         recyclerview.setLayoutManager(new LinearLayoutManager(requireContext()));
         return view;
@@ -96,5 +97,14 @@ public class RecordingsFragment extends Fragment {
                 recordingTimestamp.add(cursor.getString(cursor.getColumnIndexOrThrow("recording_timestamp")));
             }
         }
+    }
+
+    @Override
+    public void onItemClick(int position) {
+        Intent intent = new Intent(requireContext(), RecordingItem.class);
+        intent.putExtra("DATE", recordingDate.get(position));
+        intent.putExtra("TIMESTAMP", recordingTimestamp.get(position));
+
+        startActivity(intent);
     }
 }
