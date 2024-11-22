@@ -113,38 +113,32 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
-//        String json = prefs.getString("anomalySort", null);
-//        ArrayList<String> sortedAnomalyList = null;
-//
-//        if (json != null) {
-//            Gson gson = new Gson();
-//            Type type = new TypeToken<ArrayList<String>>(){}.getType();
-//             sortedAnomalyList = gson.fromJson(json, type);
-//        }
+        String json = prefs.getString("anomalySort", null);
+        ArrayList<String> sortedAnomalyList = null;
+
+        if (json != null) {
+            Gson gson = new Gson();
+            Type type = new TypeToken<ArrayList<String>>(){}.getType();
+             sortedAnomalyList = gson.fromJson(json, type);
+        }
 
         if (isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             float x = event.values[0];
             float y = event.values[1];
             float z = event.values[2];
 
-//            for (String anomaly :sortedAnomalyList) {
+            for (String anomaly :sortedAnomalyList) {
 
-//                float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
-//                float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
-//                float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
+                float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
+                float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
+                float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
 
-//                Toast.makeText(requireContext(), Float.toString(threshX), Toast.LENGTH_SHORT).show();
-
-                if (Math.abs(x) > 18) {
+                if (Math.abs(x) > threshX) {
                     // Add a coordinate entry with the detected anomaly
-                    myDB.addCoordinate((int) recordingId, x, y, "Speed Bump " + "Detected");
-                } else if (Math.abs(x) > 15 ){
-                    myDB.addCoordinate((int) recordingId, x, y, "Pothole " + "Detected");
-                } else if (Math.abs(x) > 12 ){
-                    myDB.addCoordinate((int) recordingId, x, y, "Crack " + "Detected");
-
+                    myDB.addCoordinate((int) recordingId, x, y, anomaly + " Detected");
                 }
-//            }
+
+            }
         }
     }
 
