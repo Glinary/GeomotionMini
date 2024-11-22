@@ -25,6 +25,7 @@
             android:layout_marginEnd="10dp"
             android:paddingStart="10dp"
             android:text="Pothole"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2"
             android:textStyle="bold" />
 
         <Button
@@ -32,7 +33,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:text="Configurations" />
+            android:text="Configurations"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:textStyle="bold" />
 
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

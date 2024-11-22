@@ -22,13 +22,13 @@
 
     <Button
         android:id="@+id/addLabelButton"
-        android:layout_width="match_parent"
+        android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:text="Add Label" />
 
     <Button
         android:id="@+id/addActivityLabelBack"
-        android:layout_width="match_parent"
+        android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:text="Back" />
 
