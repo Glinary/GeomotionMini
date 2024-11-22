@@ -11,12 +11,15 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -86,6 +89,10 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
         // Uncomment drop when using version used by other
 //        myDB.dropTable();
+//        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
+//        SharedPreferences.Editor editor = prefs.edit();
+//        editor.clear();  // Clears all data in SharedPreferences
+//        editor.apply();
     }
 
     @Override
@@ -93,6 +100,45 @@ public class HomeFragment extends Fragment implements SensorEventListener {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_home, container, false);
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
+
+
+        SwitchCompat accelerometer = view.findViewById(R.id.sw_accel);
+        SwitchCompat  gyroscope = view.findViewById(R.id.sw_gyro);
+        SwitchCompat  gps = view.findViewById(R.id.sw_gps);
+
+        accelerometer.setChecked(prefs.getBoolean("isAccel", false));
+        gyroscope.setChecked(prefs.getBoolean("isGyro", false));
+        gps.setChecked(prefs.getBoolean("isGPS", false));
+
+
+        accelerometer.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean("isAccel", isChecked);
+                editor.apply();
+            }
+        });
+
+        gyroscope.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean("isGyro", isChecked);
+                editor.apply();
+            }
+        });
+
+        gps.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean("isGPS", isChecked);
+                editor.apply();
+            }
+        });
+
 
         recordingButton = view.findViewById(R.id.recordingButton);
         recordingButton.setOnClickListener(new View.OnClickListener() {
@@ -135,7 +181,7 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
                 if (Math.abs(x) > threshX) {
                     // Add a coordinate entry with the detected anomaly
-                    myDB.addCoordinate((int) recordingId, x, y, anomaly + " Detected");
+                    myDB.addCoordinate((int) recordingId, x, y, anomaly);
                 }
 
             }

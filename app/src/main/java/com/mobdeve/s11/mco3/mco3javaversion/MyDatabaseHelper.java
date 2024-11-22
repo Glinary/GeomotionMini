@@ -1,7 +1,10 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -13,6 +16,7 @@ import androidx.annotation.Nullable;
 public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     private Context context;
+    SharedPreferences prefs;
     private static final String DATABASE_NAME = "Recordings.db";
     private static final int DATABASE_VERSION = 2;
 
@@ -31,11 +35,22 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE3_NAME = "anomaly_table";
     private static final String COLUMN3_ID = "anomaly_id";
     private static final String COLUMN3_ANOMALY_NAME = "anomaly_name";
+    private static final String COLUMN3_ANOMALY_COLOR = "anomaly_color";
 
 
     public MyDatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.context = context;
+
+        prefs = this.context.getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putFloat("Hue_Pothole", 177);
+        editor.putFloat("Hue_Speed Bump", 307);
+        editor.putFloat("Hue_Road Crack", 36);
+        editor.apply();
+
+        Toast.makeText(this.context, "Main Anomaly Colored", Toast.LENGTH_SHORT).show();
+
     }
 
     @Override
@@ -45,7 +60,8 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
         String createAnomalyTableQuery = "CREATE TABLE " + TABLE3_NAME + "(" +
                 COLUMN3_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                COLUMN3_ANOMALY_NAME + " TEXT UNIQUE NOT NULL);";
+                COLUMN3_ANOMALY_NAME + " TEXT UNIQUE NOT NULL, " +
+                COLUMN3_ANOMALY_COLOR + " REAL NOT NULL DEFAULT 0);";
         db.execSQL(createAnomalyTableQuery);
 
         // Step 2: Populate anomaly_table with initial allowed values
@@ -149,10 +165,11 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
     }
 
-    public void addAllowedAnomaly(String anomalyName) {
+    public void addAllowedAnomaly(String anomalyName, Float anomalyColor) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put("anomaly_name", anomalyName);
+        cv.put("anomaly_color", anomalyColor);
 
         long result = db.insert("anomaly_table", null, cv);
         if (result == -1) {

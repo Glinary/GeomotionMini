@@ -1,6 +1,7 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -11,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import java.util.Random;
 
 public class AddLabel extends AppCompatActivity {
     MyDatabaseHelper myDB;
@@ -28,6 +30,9 @@ public class AddLabel extends AppCompatActivity {
 //            return insets;
 //        });
         myDB = new MyDatabaseHelper(this);
+        SharedPreferences prefs = this.getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+
         editTextAnomaly = findViewById(R.id.editTextAnomaly);
         addLabelItemButton = findViewById(R.id.addLabelButton);
         addActivityLabelBack = findViewById(R.id.addActivityLabelBack);
@@ -37,7 +42,13 @@ public class AddLabel extends AppCompatActivity {
 
             if (!anomalyName.isEmpty()) {
                 // Add anomaly to database
-                myDB.addAllowedAnomaly(anomalyName);
+                Random random = new Random();
+                float randomHue = random.nextFloat() * 360;
+
+                myDB.addAllowedAnomaly(anomalyName, randomHue);
+                editor.putFloat("Hue_" + anomalyName, randomHue);
+                editor.apply();
+
                 editTextAnomaly.setText(""); // Clear input field
             } else {
                 Toast.makeText(this, "Anomaly name cannot be empty", Toast.LENGTH_SHORT).show();
