@@ -45,7 +45,7 @@
             android:textSize="20sp" />
 
         <EditText
-            android:id="@+id/editTextText2"
+            android:id="@+id/acc_X"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:ems="3"
@@ -75,7 +75,7 @@
             android:textSize="20sp" />
 
         <EditText
-            android:id="@+id/editTextText3"
+            android:id="@+id/acc_Y"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:ems="3"
@@ -105,7 +105,7 @@
             android:textSize="20sp" />
 
         <EditText
-            android:id="@+id/editTextText4"
+            android:id="@+id/acc_Z"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:ems="3"

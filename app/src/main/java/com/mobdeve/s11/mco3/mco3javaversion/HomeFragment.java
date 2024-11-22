@@ -1,6 +1,10 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -15,8 +19,20 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -31,6 +47,10 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     private MyDatabaseHelper myDB;
     private long recordingId; // Track the current recording ID
     private boolean isRecording = false; // Flag to track recording state
+    ArrayList<String> anomalyType = new ArrayList<>(Arrays.asList("Pothole", "Speed Bump", "Crack"));
+    ArrayList<String> anomalyLabel;
+
+
 
     public HomeFragment() {
         // Required empty public constructor
@@ -63,6 +83,7 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 //        // Initialize database helper
         myDB = new MyDatabaseHelper(requireContext());
 
+
         // Uncomment drop when using version used by other
 //        myDB.dropTable();
     }
@@ -91,21 +112,42 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
+//        String json = prefs.getString("anomalySort", null);
+//        ArrayList<String> sortedAnomalyList = null;
+//
+//        if (json != null) {
+//            Gson gson = new Gson();
+//            Type type = new TypeToken<ArrayList<String>>(){}.getType();
+//             sortedAnomalyList = gson.fromJson(json, type);
+//        }
+
         if (isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             float x = event.values[0];
             float y = event.values[1];
             float z = event.values[2];
 
-            Toast.makeText(requireContext(), Float.toString(x), Toast.LENGTH_SHORT).show();
+//            for (String anomaly :sortedAnomalyList) {
 
+//                float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
+//                float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
+//                float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
 
-            // Check for specific X, Y, Z values (e.g., detect bumps)
-            if (Math.abs(x) > 10 || Math.abs(y) > 10 || Math.abs(z) > 20) {
-                // Add a coordinate entry with the detected anomaly
-                myDB.addCoordinate((int) recordingId, x, y, "Anomaly Detected");
-            }
+//                Toast.makeText(requireContext(), Float.toString(threshX), Toast.LENGTH_SHORT).show();
+
+                if (Math.abs(x) > 18) {
+                    // Add a coordinate entry with the detected anomaly
+                    myDB.addCoordinate((int) recordingId, x, y, "Speed Bump " + "Detected");
+                } else if (Math.abs(x) > 15 ){
+                    myDB.addCoordinate((int) recordingId, x, y, "Pothole " + "Detected");
+                } else if (Math.abs(x) > 12 ){
+                    myDB.addCoordinate((int) recordingId, x, y, "Crack " + "Detected");
+
+                }
+//            }
         }
     }
+
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {

@@ -121,9 +121,6 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
             myMap.addMarker(new MarkerOptions().position(location).title("Anomaly").icon(customIcon));
             count++;
 
-
-
-
         }
         Toast.makeText(this, Integer.toString(count), Toast.LENGTH_SHORT).show();
 
