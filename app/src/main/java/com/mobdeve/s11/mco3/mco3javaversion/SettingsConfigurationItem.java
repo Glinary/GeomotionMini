@@ -1,35 +1,23 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
-import static androidx.core.content.ContentProviderCompat.requireContext;
 
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
-//import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.gson.Gson;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-//import androidx.core.graphics.Insets;
-//import androidx.core.view.ViewCompat;
-//import androidx.core.view.WindowInsetsCompat;
 
 public class SettingsConfigurationItem extends AppCompatActivity {
     Button activitySettingsConfigurationItemBackButton;
@@ -40,13 +28,7 @@ public class SettingsConfigurationItem extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_settings_configuration_item);
-//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-//            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-//            return insets;
-//        });
 
         myDB = new MyDatabaseHelper(this);
         anomalyLabel = new ArrayList<String>();
@@ -70,6 +52,14 @@ public class SettingsConfigurationItem extends AppCompatActivity {
         accY.setText(prefs.getString("anomaly_" + anomalyLabel + "_accY", "0"));
         accZ.setText(prefs.getString("anomaly_" + anomalyLabel + "_accZ", "0"));
 
+        EditText gyroX = findViewById(R.id.gyro_X);
+        EditText gyroY = findViewById(R.id.gyro_Y);
+        EditText gyroZ = findViewById(R.id.gyro_Z);
+
+        gyroX.setText(prefs.getString("anomaly_" + anomalyLabel + "_gyroX", "0"));
+        gyroY.setText(prefs.getString("anomaly_" + anomalyLabel + "_gyroY", "0"));
+        gyroZ.setText(prefs.getString("anomaly_" + anomalyLabel + "_gyroZ", "0"));
+
         activitySettingsConfigurationItemBackButton = findViewById(R.id.activitySettingsConfigurationItemBackButton);
         activitySettingsConfigurationItemBackButton.setOnClickListener(v -> {
             // Set Configuration
@@ -78,10 +68,13 @@ public class SettingsConfigurationItem extends AppCompatActivity {
             editor.putString("anomaly_" + anomalyLabel + "_accX", accX.getText().toString());
             editor.putString("anomaly_" + anomalyLabel + "_accY", accY.getText().toString());
             editor.putString("anomaly_" + anomalyLabel + "_accZ", accZ.getText().toString());
+
+            editor.putString("anomaly_" + anomalyLabel + "_gyroX", gyroX.getText().toString());
+            editor.putString("anomaly_" + anomalyLabel + "_gyroY", gyroY.getText().toString());
+            editor.putString("anomaly_" + anomalyLabel + "_gyroZ", gyroZ.getText().toString());
             editor.apply();
             finish();
 
-            Toast.makeText(this, "configuration successful", Toast.LENGTH_SHORT).show();
             sortLabels(prefs);
         });
     }
@@ -106,7 +99,13 @@ public class SettingsConfigurationItem extends AppCompatActivity {
             float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomalyLabel + "_accY", "0"));
             float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomalyLabel + "_accZ", "0"));
 
-            float combined = threshX + threshY + threshZ;
+            // Combine gyroscope thresholds
+            float gyroThreshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroX", "0"));
+            float gyroThreshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroY", "0"));
+            float gyroThreshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroZ", "0"));
+
+            // Combine all axes for sorting
+            float combined = threshX + threshY + threshZ + gyroThreshX + gyroThreshY + gyroThreshZ;
             combinedAxes.put(anomaly, combined);
         }
 
@@ -132,8 +131,6 @@ public class SettingsConfigurationItem extends AppCompatActivity {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString("anomalySort", json);
         editor.apply();
-
-//        Toast.makeText(this, "sorting successful", Toast.LENGTH_SHORT).show();
 
     }
 
