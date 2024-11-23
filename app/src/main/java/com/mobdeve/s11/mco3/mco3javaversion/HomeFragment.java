@@ -192,12 +192,18 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     public void onSensorChanged(SensorEvent event) {
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
         String json = prefs.getString("anomalySort", null);
-        ArrayList<String> sortedAnomalyList = null;
+        ArrayList<String> sortedAnomalyList = new ArrayList<>();
 
         if (json != null) {
             Gson gson = new Gson();
             Type type = new TypeToken<ArrayList<String>>(){}.getType();
              sortedAnomalyList = gson.fromJson(json, type);
+        }
+
+        if (sortedAnomalyList.isEmpty()){
+            sortedAnomalyList.add("Pothole");
+            sortedAnomalyList.add("Speed Bump");
+            sortedAnomalyList.add("Road Crack");
         }
 
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
