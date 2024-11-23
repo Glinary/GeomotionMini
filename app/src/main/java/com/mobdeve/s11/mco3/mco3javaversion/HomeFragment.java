@@ -4,14 +4,21 @@ import static android.content.Context.MODE_PRIVATE;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import android.view.LayoutInflater;
@@ -37,12 +44,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import android.Manifest;
+
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link HomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class HomeFragment extends Fragment implements SensorEventListener {
+public class HomeFragment extends Fragment implements SensorEventListener, LocationListener {
 
     Button recordingButton;
     private SensorManager sensorManager;
@@ -52,7 +61,8 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     private boolean isRecording = false; // Flag to track recording state
     ArrayList<String> anomalyType = new ArrayList<>(Arrays.asList("Pothole", "Speed Bump", "Crack"));
     ArrayList<String> anomalyLabel;
-
+    private LocationManager locationManager;  // Add LocationManager for GPS
+    private Location currentLocation;  // Store the current GPS location
 
 
     public HomeFragment() {
@@ -77,15 +87,26 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Check for location permission
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(requireActivity(),
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        }
+
         // Initialize SensorManager and Accelerometer
         sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
 
-//        // Initialize database helper
+        // Initialize database helper
         myDB = new MyDatabaseHelper(requireContext());
 
+        // Initialize LocationManager for GPS
+        locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
 
         // Uncomment drop when using version used by other
 //        myDB.dropTable();
@@ -93,6 +114,7 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 //        SharedPreferences.Editor editor = prefs.edit();
 //        editor.clear();  // Clears all data in SharedPreferences
 //        editor.apply();
+
     }
 
     @Override
@@ -168,7 +190,12 @@ public class HomeFragment extends Fragment implements SensorEventListener {
              sortedAnomalyList = gson.fromJson(json, type);
         }
 
-        if (isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Toast.makeText(requireContext(), "GPS is disabled!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentLocation != null && isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             float x = event.values[0];
             float y = event.values[1];
             float z = event.values[2];
@@ -181,7 +208,7 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
                 if (Math.abs(x) > threshX) {
                     // Add a coordinate entry with the detected anomaly
-                    myDB.addCoordinate((int) recordingId, x, y, anomaly);
+                    myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
                 }
 
             }
@@ -210,6 +237,15 @@ public class HomeFragment extends Fragment implements SensorEventListener {
         if (sensorManager != null && accelerometer != null) {
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         }
+
+        // Start listening to GPS updates
+        if (locationManager != null) {
+            try {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void stopRecording() {
@@ -220,5 +256,14 @@ public class HomeFragment extends Fragment implements SensorEventListener {
         if (sensorManager != null) {
             sensorManager.unregisterListener(this);
         }
+
+        if (locationManager != null) {
+            locationManager.removeUpdates(this);
+        }
+    }
+
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        this.currentLocation = location;
     }
 }
