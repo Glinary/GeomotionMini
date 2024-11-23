@@ -1,7 +1,9 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -61,7 +63,6 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
         timestampView.setText(timestamp);
 
         //Recyclerview
-
         recyclerView = findViewById(R.id.coordinatesRecyclerView);
 
         myDB = new MyDatabaseHelper(this);
@@ -82,7 +83,7 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        Toast.makeText(this, Integer.toString(coordinatesList.size()), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "FR Rec: " + Integer.toString(coordinatesList.size()), Toast.LENGTH_SHORT).show();
     }
 
     void storeDataInArrays(int recordingId) {
@@ -108,21 +109,23 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         myMap = googleMap;
-        int count = 0;
+        SharedPreferences prefs = this.getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        Map<String, Double> coordinate = new HashMap<>();
 
-        for (Map<String, Double> coordinate : coordinatesList) {
+
+        Toast.makeText(this, "AnomalyList Count: " + Integer.toString(anomalyList.size()), Toast.LENGTH_SHORT).show();
+
+        for (int i = 0; i < coordinatesList.size(); i++) {
+            coordinate = coordinatesList.get(i);
             double latitude = coordinate.get("lat");
             double longitude = coordinate.get("lon");
 
             LatLng location = new LatLng(latitude, longitude);
+            String anomaly = anomalyList.get(i);
+            Log.d("ANOMALY NOW:", anomaly);
 
-            BitmapDescriptor customIcon = BitmapDescriptorFactory.fromResource(R.drawable.circle);
-
-            myMap.addMarker(new MarkerOptions().position(location).title("Anomaly").icon(customIcon));
-            count++;
-
+            myMap.addMarker(new MarkerOptions().position(location).title(anomaly).icon(BitmapDescriptorFactory.defaultMarker(prefs.getFloat("Hue_" + anomaly, 0))));
         }
-        Toast.makeText(this, Integer.toString(count), Toast.LENGTH_SHORT).show();
 
 
 //        LatLng sydney = new LatLng(-34,151);

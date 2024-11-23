@@ -23,6 +23,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="12dp"
+        android:maxLength="12"
+        android:maxLines="12"
         android:text="TextView"
         app:layout_constraintStart_toEndOf="@+id/tv_lon"
         app:layout_constraintTop_toBottomOf="@+id/anomalyTextView" />
@@ -34,6 +36,9 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="12dp"
         android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLength="12"
+        android:maxLines="12"
         android:scrollHorizontally="false"
         android:text="TextView"
         app:layout_constraintEnd_toEndOf="parent"
