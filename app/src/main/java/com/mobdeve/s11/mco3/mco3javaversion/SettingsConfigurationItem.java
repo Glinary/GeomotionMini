@@ -72,8 +72,6 @@ public class SettingsConfigurationItem extends AppCompatActivity {
         accY.setText(prefs.getString("anomaly_" + anomalyLabel + "_accY", "0"));
         accZ.setText(prefs.getString("anomaly_" + anomalyLabel + "_accZ", "0"));
 
-
-
         activitySettingsConfigurationItemBackButton = findViewById(R.id.activitySettingsConfigurationItemBackButton);
         activitySettingsConfigurationItemBackButton.setOnClickListener(v -> {
             // Set Configuration

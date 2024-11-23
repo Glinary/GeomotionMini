@@ -158,14 +158,27 @@ public class HomeFragment extends Fragment implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+
+        if (!isAdded() || getActivity() == null) {
+            // Exit if fragment is not attached
+            return;
+        }
+
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
         String json = prefs.getString("anomalySort", null);
-        ArrayList<String> sortedAnomalyList = null;
+
+        ArrayList<String> sortedAnomalyList = new ArrayList<>();
 
         if (json != null) {
             Gson gson = new Gson();
             Type type = new TypeToken<ArrayList<String>>(){}.getType();
              sortedAnomalyList = gson.fromJson(json, type);
+        }
+
+        if (sortedAnomalyList.isEmpty()) {
+            sortedAnomalyList.add("Pothole");
+            sortedAnomalyList.add("Speed Bump");
+            sortedAnomalyList.add("Road Crack");
         }
 
         if (isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
