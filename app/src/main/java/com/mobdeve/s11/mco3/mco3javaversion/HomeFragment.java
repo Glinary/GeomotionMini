@@ -36,7 +36,7 @@ import java.util.Map;
 
 /**
  * A simple {@link Fragment} subclass.
- * Use the {HomeFragment#newInstance} factory method to
+ * Use the {@link HomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
 public class HomeFragment extends Fragment implements SensorEventListener {
@@ -50,26 +50,25 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     ArrayList<String> anomalyType = new ArrayList<>(Arrays.asList("Pothole", "Speed Bump", "Crack"));
     ArrayList<String> anomalyLabel;
 
-    private OnRecordingListener recordingListener;
 
-    public interface OnRecordingListener {
-        void onRecordingStateChanged(boolean isRecording);
-    }
 
     public HomeFragment() {
         // Required empty public constructor
     }
 
-
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof OnRecordingListener) {
-            recordingListener = (OnRecordingListener) context;
-        } else {
-            throw new RuntimeException(context.toString() + " must implement OnRecordingListener");
-        }
+    /**
+     * Use this factory method to create a new instance of
+     * this fragment using the provided parameters.
+     *
+     * @param param1 Parameter 1.
+     * @param param2 Parameter 2.
+     * @return A new instance of fragment HomeFragment.
+     */
+    public static HomeFragment newInstance(String param1, String param2) {
+        HomeFragment fragment = new HomeFragment();
+        Bundle args = new Bundle();
+        fragment.setArguments(args);
+        return fragment;
     }
 
     @Override
@@ -81,8 +80,12 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
 
-        // Initialize database helper
+//        // Initialize database helper
         myDB = new MyDatabaseHelper(requireContext());
+
+
+        // Uncomment drop when using version used by other
+//        myDB.dropTable();
     }
 
     @Override
@@ -97,15 +100,10 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             public void onClick(View view) {
                 if (!isRecording) {
                     startRecording();
-                    if (recordingListener != null) {
-                        recordingListener.onRecordingStateChanged(true); // Disable BottomNavigationView
-                    }
                 } else {
                     stopRecording();
-                    if (recordingListener != null) {
-                        recordingListener.onRecordingStateChanged(false); // Enable BottomNavigationView
-                    }
                 }
+
             }
         });
 
@@ -129,7 +127,7 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             float y = event.values[1];
             float z = event.values[2];
 
-            for (String anomaly : sortedAnomalyList) {
+            for (String anomaly :sortedAnomalyList) {
 
                 float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
                 float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
@@ -139,12 +137,16 @@ public class HomeFragment extends Fragment implements SensorEventListener {
                     // Add a coordinate entry with the detected anomaly
                     myDB.addCoordinate((int) recordingId, x, y, anomaly + " Detected");
                 }
+
             }
         }
     }
 
+
     @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {}
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
+    }
 
     private void startRecording() {
         // Create a new recording
@@ -172,11 +174,5 @@ public class HomeFragment extends Fragment implements SensorEventListener {
         if (sensorManager != null) {
             sensorManager.unregisterListener(this);
         }
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        recordingListener = null;
     }
 }

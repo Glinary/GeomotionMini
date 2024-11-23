@@ -25,20 +25,32 @@ import com.mobdeve.s11.mco3.mco3javaversion.databinding.ActivityMainBinding;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class MainActivity extends AppCompatActivity implements HomeFragment.OnRecordingListener {
+public class MainActivity extends AppCompatActivity {
 
     ActivityMainBinding binding;
     private MyDatabaseHelper myDB;
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+
         super.onCreate(savedInstanceState);
+//        EdgeToEdge.enable(this);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-
+//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+//            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+//            return insets;
+//        });
         replaceFragment(new HomeFragment());
 
+
+
         binding.bottomNavigationView.setOnItemSelectedListener(item -> {
+
             if (item.getItemId() == R.id.mn_home) {
                 replaceFragment(new HomeFragment());
             } else if (item.getItemId() == R.id.mn_recordings) {
@@ -46,17 +58,11 @@ public class MainActivity extends AppCompatActivity implements HomeFragment.OnRe
             } else if (item.getItemId() == R.id.mn_settings) {
                 replaceFragment(new SettingsFragment());
             }
+
             return true;
         });
-    }
 
-    @Override
-    public void onRecordingStateChanged(boolean isRecording) {
-        if (isRecording) {
-            binding.bottomNavigationView.setEnabled(false); // Disable BottomNavigationView
-        } else {
-            binding.bottomNavigationView.setEnabled(true); // Enable BottomNavigationView
-        }
+
     }
 
     private void replaceFragment(Fragment fragment) {
