@@ -1,5 +1,6 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -109,5 +110,30 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
         intent.putExtra("TIMESTAMP", recordingTimestamp.get(position));
 
         startActivity(intent);
+    }
+
+    @Override
+    public void onDeleteClick(int position) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Delete Recording")
+                .setMessage("Are you sure you want to delete this recording and all related data?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    int idToDelete = recordingId.get(position);
+
+                    // Delete from database
+                    myDB.deleteRecording(idToDelete);
+
+                    // Remove from the list
+                    recordingId.remove(position);
+                    recordingDate.remove(position);
+                    recordingTimestamp.remove(position);
+
+                    // Notify adapter
+                    recordingCustomAdapter.notifyItemRemoved(position);
+
+                    Toast.makeText(requireContext(), "Recording deleted successfully", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("No", null)
+                .show();
     }
 }
