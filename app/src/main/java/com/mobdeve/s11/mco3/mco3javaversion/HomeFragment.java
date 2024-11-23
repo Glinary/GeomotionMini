@@ -63,6 +63,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     ArrayList<String> anomalyLabel;
     private LocationManager locationManager;  // Add LocationManager for GPS
     private Location currentLocation;  // Store the current GPS location
+    private NavigationControl navigationControl;
 
 
     public HomeFragment() {
@@ -168,8 +169,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             public void onClick(View view) {
                 if (!isRecording) {
                     startRecording();
+                    navigationControl.setAllowNavigation(false); // Disable navigation
                 } else {
                     stopRecording();
+                    navigationControl.setAllowNavigation(true); // Enable navigation
                 }
 
             }
@@ -265,5 +268,21 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     @Override
     public void onLocationChanged(@NonNull Location location) {
         this.currentLocation = location;
+    }
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        if (context instanceof NavigationControl) {
+            navigationControl = (NavigationControl) context;
+        } else {
+            throw new RuntimeException(context.toString() + " must implement NavigationControl");
+        }
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        navigationControl = null;
     }
 }

@@ -25,12 +25,11 @@ import com.mobdeve.s11.mco3.mco3javaversion.databinding.ActivityMainBinding;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NavigationControl {
 
     ActivityMainBinding binding;
     private MyDatabaseHelper myDB;
-
-
+    private boolean allowNavigation = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +50,11 @@ public class MainActivity extends AppCompatActivity {
 
         binding.bottomNavigationView.setOnItemSelectedListener(item -> {
 
+            if (!allowNavigation) { // Check if navigation is disabled
+                Toast.makeText(this, "Navigation is disabled during recording.", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+
             if (item.getItemId() == R.id.mn_home) {
                 replaceFragment(new HomeFragment());
             } else if (item.getItemId() == R.id.mn_recordings) {
@@ -70,5 +74,10 @@ public class MainActivity extends AppCompatActivity {
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         fragmentTransaction.replace(R.id.mainConstraintLayout, fragment);
         fragmentTransaction.commit();
+    }
+
+    @Override
+    public void setAllowNavigation(boolean allow) {
+        this.allowNavigation = allow;
     }
 }

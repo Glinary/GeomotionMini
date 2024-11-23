@@ -120,7 +120,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         if (row_result == -1) {
             Toast.makeText(context, "Recording failed", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(context, "Recording successful", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Recording started", Toast.LENGTH_SHORT).show();
         }
         return row_result;
     }
