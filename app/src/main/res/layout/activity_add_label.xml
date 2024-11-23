@@ -22,14 +22,20 @@
 
     <Button
         android:id="@+id/addLabelButton"
-        android:layout_width="match_parent"
+        android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:text="Add Label" />
+        android:backgroundTint="#47834A"
+        android:text="Add Label"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        android:textStyle="bold" />
 
     <Button
         android:id="@+id/addActivityLabelBack"
-        android:layout_width="match_parent"
+        android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:text="Back" />
+        android:backgroundTint="#A28BCC"
+        android:backgroundTintMode="add"
+        android:text="Back"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
 </LinearLayout>
