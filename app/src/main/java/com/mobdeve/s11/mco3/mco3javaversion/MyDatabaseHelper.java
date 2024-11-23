@@ -8,7 +8,6 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -41,9 +40,6 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
     public MyDatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.context = context;
-
-
-
     }
 
     @Override
@@ -55,10 +51,6 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         editor.putFloat("Hue_Speed Bump", 307);
         editor.putFloat("Hue_Road Crack", 36);
         editor.apply();
-
-        Toast.makeText(this.context, "Main Anomaly Colored", Toast.LENGTH_SHORT).show();
-
-        Toast.makeText(this.context, "DB INITIALIZED", Toast.LENGTH_SHORT).show();
 
         String createAnomalyTableQuery = "CREATE TABLE " + TABLE3_NAME + "(" +
                 COLUMN3_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -146,12 +138,12 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COLUMN2_LONGITUDE, longitude);
         cv.put(COLUMN2_ANOMALY, anomaly);
 
-        long result = db.insert("coordinates_table", null, cv);
-        if (result == -1) {
-            Toast.makeText(context, "Failed to add anomaly", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(context, "Anomaly added", Toast.LENGTH_SHORT).show();
-        }
+//        long result = db.insert("coordinates_table", null, cv);
+//        if (result == -1) {
+//            Toast.makeText(context, "Failed to add anomaly", Toast.LENGTH_SHORT).show();
+//        } else {
+//            Toast.makeText(context, "Anomaly added", Toast.LENGTH_SHORT).show();
+//        }
     }
 
     Cursor getCoordinates(int recordingId) {
