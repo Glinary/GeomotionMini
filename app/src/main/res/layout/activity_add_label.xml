@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#E8ECF6"
     android:gravity="center"
     android:orientation="vertical"
     tools:context=".AddLabel">
@@ -33,7 +34,6 @@
         android:id="@+id/addActivityLabelBack"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:backgroundTint="#A28BCC"
         android:backgroundTintMode="add"
         android:text="Back"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
