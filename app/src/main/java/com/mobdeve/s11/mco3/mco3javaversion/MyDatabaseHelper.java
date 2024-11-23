@@ -42,6 +42,13 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.context = context;
 
+
+
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+
         prefs = this.context.getSharedPreferences("AppPreferences", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putFloat("Hue_Pothole", 177);
@@ -50,11 +57,6 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         editor.apply();
 
         Toast.makeText(this.context, "Main Anomaly Colored", Toast.LENGTH_SHORT).show();
-
-    }
-
-    @Override
-    public void onCreate(SQLiteDatabase db) {
 
         Toast.makeText(this.context, "DB INITIALIZED", Toast.LENGTH_SHORT).show();
 
