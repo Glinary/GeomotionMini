@@ -138,7 +138,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         cv.put(COLUMN2_LONGITUDE, longitude);
         cv.put(COLUMN2_ANOMALY, anomaly);
 
-//        long result = db.insert("coordinates_table", null, cv);
+        long result = db.insert("coordinates_table", null, cv);
 //        if (result == -1) {
 //            Toast.makeText(context, "Failed to add anomaly", Toast.LENGTH_SHORT).show();
 //        } else {
@@ -180,6 +180,40 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
         // Execute the query and return the cursor with results
         return db.rawQuery(query, null);
+    }
+
+    public void deleteRecording(int recordingId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        // Use a transaction to ensure all operations are safely executed
+        db.beginTransaction();
+        try {
+            // Delete coordinates associated with the given recording ID
+            int coordinatesDeleted = db.delete(TABLE2_NAME, COLUMN2_RECORDING_ID + "=?", new String[]{String.valueOf(recordingId)});
+
+//            // Debug message for coordinates deletion
+//            if (coordinatesDeleted > 0) {
+//                Toast.makeText(context, coordinatesDeleted + " coordinates deleted", Toast.LENGTH_SHORT).show();
+//            }
+
+            // Delete the recording from the main table
+            int recordingsDeleted = db.delete(TABLE_NAME, COLUMN_ID + "=?", new String[]{String.valueOf(recordingId)});
+
+//            // Debug message for recordings deletion
+//            if (recordingsDeleted > 0) {
+//                Toast.makeText(context, "Recording deleted", Toast.LENGTH_SHORT).show();
+//            } else {
+//                Toast.makeText(context, "No recording found with the provided ID", Toast.LENGTH_SHORT).show();
+//            }
+
+            // Commit the transaction
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            // Handle exceptions and roll back in case of any errors
+            Toast.makeText(context, "Error occurred while deleting recording: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        } finally {
+            db.endTransaction();
+        }
     }
 
 }
