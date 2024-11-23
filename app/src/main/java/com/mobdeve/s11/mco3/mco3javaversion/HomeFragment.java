@@ -5,7 +5,9 @@ import static android.content.Context.MODE_PRIVATE;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -172,10 +174,12 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                 if (!isRecording && isAccActivated && isGPSActivated && isGyroActivated) {
                     startRecording();
                     navigationControl.setAllowNavigation(false); // Disable navigation
+                    recordingButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#A44661FF")));
                 } else if (!isRecording && (!isAccActivated || !isGPSActivated || !isGyroActivated)) {
                     Toast.makeText(requireContext(), "Please enable all sensors to record.", Toast.LENGTH_SHORT).show();
                 } else{
                     stopRecording();
+                    recordingButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#474983")));
                     navigationControl.setAllowNavigation(true); // Enable navigation
                 }
             }
