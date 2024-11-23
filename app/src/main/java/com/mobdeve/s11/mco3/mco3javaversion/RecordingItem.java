@@ -82,8 +82,6 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
-        Toast.makeText(this, "FR Rec: " + Integer.toString(coordinatesList.size()), Toast.LENGTH_SHORT).show();
     }
 
     void storeDataInArrays(int recordingId) {
@@ -112,7 +110,6 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
         SharedPreferences prefs = this.getSharedPreferences("AppPreferences", MODE_PRIVATE);
         Map<String, Double> coordinate = new HashMap<>();
 
-
         Toast.makeText(this, "AnomalyList Count: " + Integer.toString(anomalyList.size()), Toast.LENGTH_SHORT).show();
 
         for (int i = 0; i < coordinatesList.size(); i++) {
@@ -122,11 +119,9 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
 
             LatLng location = new LatLng(latitude, longitude);
             String anomaly = anomalyList.get(i);
-            Log.d("ANOMALY NOW:", anomaly);
 
             myMap.addMarker(new MarkerOptions().position(location).title(anomaly).icon(BitmapDescriptorFactory.defaultMarker(prefs.getFloat("Hue_" + anomaly, 0))));
         }
-
 
 //        LatLng sydney = new LatLng(-34,151);
 //        myMap.addMarker(new MarkerOptions().position(sydney).title("Sydney"));

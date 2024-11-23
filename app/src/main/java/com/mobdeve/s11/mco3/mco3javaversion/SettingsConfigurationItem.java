@@ -37,8 +37,6 @@ public class SettingsConfigurationItem extends AppCompatActivity {
     ArrayList<String> anomalyLabel;
 
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -135,7 +133,7 @@ public class SettingsConfigurationItem extends AppCompatActivity {
         editor.putString("anomalySort", json);
         editor.apply();
 
-        Toast.makeText(this, "sorting successful", Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "sorting successful", Toast.LENGTH_SHORT).show();
 
     }
 

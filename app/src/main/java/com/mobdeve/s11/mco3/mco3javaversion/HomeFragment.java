@@ -125,7 +125,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         View view = inflater.inflate(R.layout.fragment_home, container, false);
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
 
-
         SwitchCompat accelerometer = view.findViewById(R.id.sw_accel);
         SwitchCompat  gyroscope = view.findViewById(R.id.sw_gyro);
         SwitchCompat  gps = view.findViewById(R.id.sw_gps);
@@ -167,14 +166,19 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         recordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!isRecording) {
+                Boolean isAccActivated = prefs.getBoolean("isAccel", false);
+                Boolean isGPSActivated = prefs.getBoolean("isGPS", false);
+                Boolean isGyroActivated = prefs.getBoolean("isGyro", false);
+
+                if (!isRecording && isAccActivated && isGPSActivated && isGyroActivated) {
                     startRecording();
                     navigationControl.setAllowNavigation(false); // Disable navigation
-                } else {
+                } else if (!isRecording && (!isAccActivated || !isGPSActivated || !isGyroActivated)) {
+                    Toast.makeText(requireContext(), "Please enable all sensors to record.", Toast.LENGTH_SHORT).show();
+                } else{
                     stopRecording();
                     navigationControl.setAllowNavigation(true); // Enable navigation
                 }
-
             }
         });
 
@@ -206,8 +210,8 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             for (String anomaly :sortedAnomalyList) {
 
                 float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
-                float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
-                float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
+//                float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
+//                float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
 
                 if (Math.abs(x) > threshX) {
                     // Add a coordinate entry with the detected anomaly
