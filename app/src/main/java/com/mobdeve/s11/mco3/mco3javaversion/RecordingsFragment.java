@@ -31,6 +31,7 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
     ArrayList<Integer> recordingId;
     RecordingCustomAdapter recordingCustomAdapter;
     private Button manageRecordingsButton;
+    private boolean isManageRecordingsClicked = false;
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -93,7 +94,9 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
 
         manageRecordingsButton.setOnClickListener(v -> {
             // Toggle the visibility of buttons in the adapter
+            toggleManageButtonText();
             recordingCustomAdapter.toggleManageRecordings();
+
         });
         return view;
     }
@@ -179,6 +182,15 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
 
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
         builder.show();
+    }
+
+    private void toggleManageButtonText() {
+        if (!isManageRecordingsClicked) {
+            manageRecordingsButton.setText("Done");
+        } else {
+            manageRecordingsButton.setText("Manage Recordings");
+        }
+        isManageRecordingsClicked = !isManageRecordingsClicked; // Toggle state
     }
 
 
