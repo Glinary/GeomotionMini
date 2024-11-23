@@ -56,11 +56,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     Button recordingButton;
     private SensorManager sensorManager;
     private Sensor accelerometer;
+    private Sensor gyroscope;
     private MyDatabaseHelper myDB;
     private long recordingId; // Track the current recording ID
     private boolean isRecording = false; // Flag to track recording state
-    ArrayList<String> anomalyType = new ArrayList<>(Arrays.asList("Pothole", "Speed Bump", "Crack"));
-    ArrayList<String> anomalyLabel;
     private LocationManager locationManager;  // Add LocationManager for GPS
     private Location currentLocation;  // Store the current GPS location
     private NavigationControl navigationControl;
@@ -90,7 +89,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         super.onCreate(savedInstanceState);
 
         // Check for location permission
-
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(),
@@ -101,6 +99,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         }
 
         // Initialize database helper
@@ -124,7 +123,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_home, container, false);
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
-
 
         SwitchCompat accelerometer = view.findViewById(R.id.sw_accel);
         SwitchCompat  gyroscope = view.findViewById(R.id.sw_gyro);
@@ -167,14 +165,19 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         recordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!isRecording) {
+                Boolean isAccActivated = prefs.getBoolean("isAccel", false);
+                Boolean isGPSActivated = prefs.getBoolean("isGPS", false);
+                Boolean isGyroActivated = prefs.getBoolean("isGyro", false);
+
+                if (!isRecording && isAccActivated && isGPSActivated && isGyroActivated) {
                     startRecording();
                     navigationControl.setAllowNavigation(false); // Disable navigation
-                } else {
+                } else if (!isRecording && (!isAccActivated || !isGPSActivated || !isGyroActivated)) {
+                    Toast.makeText(requireContext(), "Please enable all sensors to record.", Toast.LENGTH_SHORT).show();
+                } else{
                     stopRecording();
                     navigationControl.setAllowNavigation(true); // Enable navigation
                 }
-
             }
         });
 
@@ -198,22 +201,35 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             return;
         }
 
-        if (currentLocation != null && isRecording && event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            float x = event.values[0];
-            float y = event.values[1];
-            float z = event.values[2];
+        if (currentLocation != null && isRecording) {
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                float x = event.values[0];
+                float y = event.values[1];
+                float z = event.values[2];
 
-            for (String anomaly :sortedAnomalyList) {
+                for (String anomaly : sortedAnomalyList) {
+                    float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
+//                    float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
+//                    float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
 
-                float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
-                float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
-                float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
-
-                if (Math.abs(x) > threshX) {
-                    // Add a coordinate entry with the detected anomaly
-                    myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
+                    if (Math.abs(x) > threshX) {
+                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
+                    }
                 }
+            } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                float angularX = event.values[0];
+                float angularY = event.values[1];
+                float angularZ = event.values[2];
 
+                for (String anomaly : sortedAnomalyList) {
+                    float gyroThreshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroX", "0"));
+                    float gyroThreshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroY", "0"));
+                    float gyroThreshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroZ", "0"));
+
+                    if (Math.abs(angularX) > gyroThreshX || Math.abs(angularY) > gyroThreshY || Math.abs(angularZ) > gyroThreshZ) {
+                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
+                    }
+                }
             }
         }
     }
@@ -237,8 +253,13 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         recordingButton.setText("Stop Recording");
 
         // Start listening to accelerometer events
-        if (sensorManager != null && accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        if (sensorManager != null) {
+            if (accelerometer != null) {
+                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            }
+            if (gyroscope != null) { // Register gyroscope listener
+                sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+            }
         }
 
         // Start listening to GPS updates
