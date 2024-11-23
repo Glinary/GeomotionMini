@@ -19,6 +19,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.fragment.app.Fragment;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -34,11 +36,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link HomeFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
 public class HomeFragment extends Fragment implements SensorEventListener {
 
     Button recordingButton;
@@ -51,24 +48,8 @@ public class HomeFragment extends Fragment implements SensorEventListener {
     ArrayList<String> anomalyLabel;
 
 
-
     public HomeFragment() {
         // Required empty public constructor
-    }
-
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment HomeFragment.
-     */
-    public static HomeFragment newInstance(String param1, String param2) {
-        HomeFragment fragment = new HomeFragment();
-        Bundle args = new Bundle();
-        fragment.setArguments(args);
-        return fragment;
     }
 
     @Override
@@ -80,12 +61,12 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
 
-//        // Initialize database helper
+        // Initialize database helper
         myDB = new MyDatabaseHelper(requireContext());
 
-
-        // Uncomment drop when using version used by other
-//        myDB.dropTable();
+        // Retrieve recording state from SharedPreferences
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
+        isRecording = prefs.getBoolean("isRecording", false);  // Retrieve previous state
     }
 
     @Override
@@ -103,16 +84,55 @@ public class HomeFragment extends Fragment implements SensorEventListener {
                 } else {
                     stopRecording();
                 }
-
             }
         });
 
         return view;
     }
 
+    private void startRecording() {
+        // Disable BottomNavigationView to prevent switching fragments
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putBoolean("isRecording", true);
+        editor.apply();
+
+        isRecording = true;
+        // Start recording logic
+        SimpleDateFormat formatter1 = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat formatter2 = new SimpleDateFormat("HH:mm:ss");
+        Date date = new Date();
+        String currentDate = formatter1.format(date);
+        String currentTimestamp = formatter2.format(date);
+
+        recordingId = myDB.addRecording(currentDate, currentTimestamp); // Get the recording ID
+        recordingButton.setText("Stop Recording");
+
+        // Start listening to accelerometer events
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    private void stopRecording() {
+        // Re-enable BottomNavigationView after recording stops
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putBoolean("isRecording", false);
+        editor.apply();
+
+        isRecording = false;
+        recordingButton.setText("Start Recording");
+
+        // Stop listening to accelerometer events
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+    }
+
     @Override
     public void onSensorChanged(SensorEvent event) {
-        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE);
         String json = prefs.getString("anomalySort", null);
         ArrayList<String> sortedAnomalyList = null;
 
@@ -127,8 +147,7 @@ public class HomeFragment extends Fragment implements SensorEventListener {
             float y = event.values[1];
             float z = event.values[2];
 
-            for (String anomaly :sortedAnomalyList) {
-
+            for (String anomaly : sortedAnomalyList) {
                 float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
                 float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
                 float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
@@ -137,42 +156,12 @@ public class HomeFragment extends Fragment implements SensorEventListener {
                     // Add a coordinate entry with the detected anomaly
                     myDB.addCoordinate((int) recordingId, x, y, anomaly + " Detected");
                 }
-
             }
         }
     }
 
-
     @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-
-    }
-
-    private void startRecording() {
-        // Create a new recording
-        SimpleDateFormat formatter1 = new SimpleDateFormat("yyyy-MM-dd");
-        SimpleDateFormat formatter2 = new SimpleDateFormat("HH:mm:ss");
-        Date date = new Date();
-        String currentDate = formatter1.format(date);
-        String currentTimestamp = formatter2.format(date);
-
-        recordingId = myDB.addRecording(currentDate, currentTimestamp); // Get the recording ID
-        isRecording = true;
-        recordingButton.setText("Stop Recording");
-
-        // Start listening to accelerometer events
-        if (sensorManager != null && accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        }
-    }
-
-    private void stopRecording() {
-        isRecording = false;
-        recordingButton.setText("Start Recording");
-
-        // Stop listening to accelerometer events
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(this);
-        }
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Handle accuracy changes if needed
     }
 }
