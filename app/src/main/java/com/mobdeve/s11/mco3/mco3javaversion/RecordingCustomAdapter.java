@@ -17,6 +17,7 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
     private Context context;
     private ArrayList<String> recordingDate, recordingTimestamp;
     private ArrayList<Integer> recordingId;
+    private boolean isManageRecordingsClicked = false;
 
     RecordingCustomAdapter(Context context, ArrayList<String> recordingDate, ArrayList<String> recordingTimestamp, ArrayList<Integer> recordingId,
                             RecordingAdapterInterface recordingAdapterInterface) {
@@ -41,6 +42,19 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
         holder.recordingTimestamp.setText(String.valueOf(recordingTimestamp.get(position)));
         holder.recordingId.setText(String.valueOf(recordingId.get(position)));
 
+        // Toggle the visibility of the buttons based on the flag
+        if (isManageRecordingsClicked) {
+            holder.deleteButton.setVisibility(View.VISIBLE);
+            holder.renameButton.setVisibility(View.VISIBLE);
+            holder.deleteButton.setClickable(true);
+            holder.renameButton.setClickable(true);
+        } else {
+            holder.deleteButton.setVisibility(View.GONE);
+            holder.renameButton.setVisibility(View.GONE);
+            holder.deleteButton.setClickable(false);
+            holder.renameButton.setClickable(false);
+        }
+
         holder.deleteButton.setOnClickListener(v -> {
             if (recordingAdapterInterface != null) {
                 recordingAdapterInterface.onDeleteClick(position);
@@ -57,6 +71,12 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
     @Override
     public int getItemCount() {
         return recordingDate.size();
+    }
+
+    // Method to toggle the manage recordings state
+    public void toggleManageRecordings() {
+        isManageRecordingsClicked = !isManageRecordingsClicked;
+        notifyDataSetChanged(); // Notify the adapter to rebind the view
     }
 
     public static class MyViewHolder extends RecyclerView.ViewHolder{

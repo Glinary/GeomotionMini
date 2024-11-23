@@ -100,7 +100,7 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
         SharedPreferences prefs = this.getSharedPreferences("AppPreferences", MODE_PRIVATE);
         Map<String, Double> coordinate = new HashMap<>();
 
-        Toast.makeText(this, "AnomalyList Count: " + Integer.toString(anomalyList.size()), Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "AnomalyList Count: " + Integer.toString(anomalyList.size()), Toast.LENGTH_SHORT).show();
 
         for (int i = 0; i < coordinatesList.size(); i++) {
             coordinate = coordinatesList.get(i);

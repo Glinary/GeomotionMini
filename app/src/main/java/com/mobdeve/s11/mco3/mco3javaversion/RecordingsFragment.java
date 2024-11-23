@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -29,6 +30,7 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
     ArrayList<String> recordingDate, recordingTimestamp;
     ArrayList<Integer> recordingId;
     RecordingCustomAdapter recordingCustomAdapter;
+    private Button manageRecordingsButton;
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -76,6 +78,7 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_recordings, container, false);
         recyclerview = view.findViewById(R.id.recordingRecyclerView);
+        manageRecordingsButton = view.findViewById(R.id.manageRecordingsButton);
 
         myDB = new MyDatabaseHelper(requireContext());
         recordingDate = new ArrayList<String>();
@@ -87,6 +90,11 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
                                                             recordingDate, recordingTimestamp, recordingId, this);
         recyclerview.setAdapter(recordingCustomAdapter);
         recyclerview.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        manageRecordingsButton.setOnClickListener(v -> {
+            // Toggle the visibility of buttons in the adapter
+            recordingCustomAdapter.toggleManageRecordings();
+        });
         return view;
     }
 
