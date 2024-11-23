@@ -20,11 +20,15 @@ public class CoordinatesAdapter extends RecyclerView.Adapter<CoordinatesAdapter.
     private List<Map<String, Double>> coordinatesList;
     private ArrayList<String> anomalyList;
     private Context context;
+    private CoordinatesInterface coordinatesInterface;
 
-    public CoordinatesAdapter(Context context, List<Map<String, Double>> coordinatesList, ArrayList<String> anomalyList) {
+    public CoordinatesAdapter(Context context, List<Map<String, Double>> coordinatesList, ArrayList<String> anomalyList,
+                              CoordinatesInterface coordinatesInterface) {
         this.context = context;
         this.coordinatesList = coordinatesList;
         this.anomalyList = anomalyList;
+        this.coordinatesInterface = coordinatesInterface;
+
     }
 
 
@@ -33,7 +37,7 @@ public class CoordinatesAdapter extends RecyclerView.Adapter<CoordinatesAdapter.
     public CoordinatesAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         CoordinateListItemBinding view = CoordinateListItemBinding.inflate(inflater, parent, false);
-        return new ViewHolder(view.getRoot());
+        return new ViewHolder(view.getRoot(), coordinatesInterface);
 
     }
 
@@ -53,16 +57,30 @@ public class CoordinatesAdapter extends RecyclerView.Adapter<CoordinatesAdapter.
         return coordinatesList.size();
     }
 
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView coordinateTextViewLat;
         TextView coordinateTextViewLon;
         TextView anomalyTextView;
 
-        public ViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView, CoordinatesInterface coordinatesInterface) {
             super(itemView);
             coordinateTextViewLat = itemView.findViewById(R.id.coordinateTextViewLat);
             coordinateTextViewLon =  itemView.findViewById(R.id.coordinateTextViewLon);
             anomalyTextView = itemView.findViewById(R.id.anomalyTextView);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (coordinatesInterface != null) {
+                        int pos = getAdapterPosition();
+
+                        if (pos != RecyclerView.NO_POSITION) {
+                            coordinatesInterface.onItemClick(pos);
+                        }
+                    }
+                }
+            });
         }
     }
 }

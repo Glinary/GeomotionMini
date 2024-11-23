@@ -31,7 +31,7 @@ import java.util.Map;
 //import androidx.core.view.ViewCompat;
 //import androidx.core.view.WindowInsetsCompat;
 
-public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallback {
+public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallback, CoordinatesInterface {
 
     RecyclerView recyclerView;
     MyDatabaseHelper myDB;
@@ -71,7 +71,7 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
 
         storeDataInArrays(recordingId);
 
-        coordinatesAdapter = new CoordinatesAdapter(this, coordinatesList, anomalyList);
+        coordinatesAdapter = new CoordinatesAdapter(this, coordinatesList, anomalyList, this);
         recyclerView.setAdapter(coordinatesAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -133,5 +133,17 @@ public class RecordingItem extends AppCompatActivity  implements OnMapReadyCallb
 //        float zoomLevel = 14.0f;
 //        myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sydney, zoomLevel));
 
+    }
+
+    @Override
+    public void onItemClick(int position) {
+        // Get the coordinates of the selected item
+        Map<String, Double> coordinate = coordinatesList.get(position);
+        double latitude = coordinate.get("lat");
+        double longitude = coordinate.get("lon");
+
+        // Focus the map on the clicked marker
+        LatLng location = new LatLng(latitude, longitude);
+        myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15));
     }
 }
