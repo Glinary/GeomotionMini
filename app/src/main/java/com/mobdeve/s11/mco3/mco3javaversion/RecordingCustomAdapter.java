@@ -46,6 +46,12 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
                 recordingAdapterInterface.onDeleteClick(position);
             }
         });
+
+        holder.renameButton.setOnClickListener(v -> {
+            if (recordingAdapterInterface != null){
+                recordingAdapterInterface.onUpdateClick(position);
+            }
+        });
     }
 
     @Override
@@ -57,6 +63,7 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
 
         TextView recordingDate, recordingTimestamp, recordingId;
         Button deleteButton;
+        Button renameButton;
 
         public MyViewHolder(@NonNull View itemView, RecordingAdapterInterface recordingAdapterInterface) {
             super(itemView);
@@ -64,6 +71,7 @@ public class RecordingCustomAdapter extends RecyclerView.Adapter<RecordingCustom
             recordingTimestamp = itemView.findViewById(R.id.tv_recTimestamp);
             recordingId = itemView.findViewById(R.id.tv_recordingId);
             deleteButton = itemView.findViewById(R.id.btn_delete);
+            renameButton = itemView.findViewById(R.id.rename);
 
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override

@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -214,6 +215,26 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         } finally {
             db.endTransaction();
         }
+    }
+
+    public void renameRecording(int recordingID, String value){
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.beginTransaction();
+
+
+        ContentValues values = new ContentValues(); // Create a ContentValues object
+        values.put(COLUMN_DATE, value);
+
+        try {
+            db.update(TABLE_NAME, values, COLUMN_ID + "=?", new String[]{String.valueOf(recordingID)});
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            Log.d("ERROR MES", "Error occurred while updating recording: " + e.getMessage() );
+            Toast.makeText(context, "Error occurred while updating recording: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        } finally {
+            db.endTransaction();
+        }
+
     }
 
 }

@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -136,4 +137,42 @@ public class RecordingsFragment extends Fragment implements RecordingAdapterInte
                 .setNegativeButton("No", null)
                 .show();
     }
+
+    public void onUpdateClick(int position) {
+        // Create an AlertDialog with input fields
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Update Recording");
+
+        // Set up the input field
+        final EditText inputField = new EditText(requireContext());
+        inputField.setHint("Enter new recording name");
+        builder.setView(inputField);
+
+        // Set existing value (optional)
+        inputField.setText(recordingDate.get(position)); // Assuming you're updating the date/name
+
+        // Set up buttons
+        builder.setPositiveButton("rename", (dialog, which) -> {
+            String updatedValue = inputField.getText().toString();
+
+            // Update in the database
+            int idToUpdate = recordingId.get(position);
+            myDB.renameRecording(idToUpdate, updatedValue); // Implement this in your DB helper
+
+            // Update in the local list
+            recordingDate.set(position, updatedValue);
+
+            // Notify the adapter
+            recordingCustomAdapter.notifyItemChanged(position);
+
+            // Show a confirmation message
+            Toast.makeText(requireContext(), "Recording updated successfully", Toast.LENGTH_SHORT).show();
+        });
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        builder.show();
+    }
+
+
+
 }
