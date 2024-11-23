@@ -203,7 +203,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="80dp"
         android:text="Back"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
