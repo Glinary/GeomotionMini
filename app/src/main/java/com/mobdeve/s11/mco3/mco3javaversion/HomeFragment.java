@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -65,6 +66,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     private LocationManager locationManager;  // Add LocationManager for GPS
     private Location currentLocation;  // Store the current GPS location
     private NavigationControl navigationControl;
+
+    private ButterworthFilter lowPassFilter;
+    private ButterworthFilter highPassFilter;
+    private List<Double> filteredDataList;
 
 
     public HomeFragment() {
@@ -116,6 +121,14 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 //        SharedPreferences.Editor editor = prefs.edit();
 //        editor.clear();  // Clears all data in SharedPreferences
 //        editor.apply();
+
+        double [] bLow = { 3.75683802e-06, 1.12705141e-05, 1.12705141e-05, 3.75683802e-06 }; /* Insert b_low from Python */
+        double [] aLow = { 1.0, -2.93717073, 2.87629972, -0.93909894 }; /* Insert a_low from Python */
+        double[] bHigh = { 0.9911536, -1.98230719, 0.9911536 }; /* Insert b_lowhigh from Python */
+        double[] aHigh = { 1.0, -1.98222893, 0.98238545 }; /* Insert a_lowhigh from Python */
+        lowPassFilter = new ButterworthFilter(bLow, aLow);
+        highPassFilter = new ButterworthFilter(bHigh, aHigh);
+        filteredDataList = new ArrayList<>();
 
     }
 
@@ -193,6 +206,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
         String json = prefs.getString("anomalySort", null);
         ArrayList<String> sortedAnomalyList = new ArrayList<>();
+        Integer WINDOW_SIZE = 150;
 
         if (json != null) {
             Gson gson = new Gson();
@@ -213,6 +227,48 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
         if (currentLocation != null && isRecording) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+
+                // PREPROCESSING START //
+                double rawData = Math.sqrt(
+                        Math.pow(event.values[0], 2) +
+                                Math.pow(event.values[1], 2) +
+                                Math.pow(event.values[2], 2)
+                );
+
+                // Apply low-pass filter
+                double lowPassFiltered = lowPassFilter.apply(rawData);
+
+                // Apply high-pass filter
+                double filteredData = highPassFilter.apply(lowPassFiltered);
+
+                //use "filteredData" for further processing
+
+                // Add the filtered data to the list
+                filteredDataList.add(filteredData);
+
+                // Check if sliding window logic should be triggered
+                if (filteredDataList.size() >= WINDOW_SIZE) {
+                    List<List<Double>> windows = generateSlidingWindows(filteredDataList, WINDOW_SIZE);
+                    // Process the windows as needed
+
+                    // Extract features
+                    float[] inputFeatures = prepareFeaturesForModel(windows);
+
+                    // Run TensorFlow Lite model
+                    TFLiteModel model = new TFLiteModel(requireContext(), "model.tflite"); //TODO: CHANGE TO PATH OF MODEL
+                    float[] predictions = model.runInference(inputFeatures, windows.size());
+
+                    // Process predictions
+                    for (float prediction : predictions) {
+                        Log.d("TFLitePrediction", "Prediction: " + prediction);
+                    }
+
+                    // Optionally clear old data to avoid memory overhead
+                    filteredDataList.clear();
+                }
+
+                // PREPROCESSING END //
+
                 float x = event.values[0];
                 float y = event.values[1];
                 float z = event.values[2];
@@ -316,4 +372,99 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         super.onDetach();
         navigationControl = null;
     }
+
+    public List<List<Double>> generateSlidingWindows(List<Double> data, int windowSize) {
+        List<List<Double>> windows = new ArrayList<>();
+
+        for (int i = 0; i <= data.size() - windowSize; i++) {
+            List<Double> window = new ArrayList<>(data.subList(i, i + windowSize));
+            windows.add(window);
+        }
+
+        return windows;
+    }
+
+    public List<double[]> flattenWindows(List<List<Double>> windows) {
+        List<double[]> flattenedWindows = new ArrayList<>();
+
+        for (List<Double> window : windows) {
+            double[] flattened = new double[window.size()];
+            for (int i = 0; i < window.size(); i++) {
+                flattened[i] = window.get(i);
+            }
+            flattenedWindows.add(flattened);
+        }
+
+        return flattenedWindows;
+    }
+
+    public static class LabeledWindow {
+        public double[] window;
+        public int label; // or String label, depending on your use case
+
+        public LabeledWindow(double[] window, int label) {
+            this.window = window;
+            this.label = label;
+        }
+    }
+
+    public List<LabeledWindow> labelWindows(List<double[]> flattenedWindows, int defaultLabel) {
+        List<LabeledWindow> labeledWindows = new ArrayList<>();
+
+        for (double[] window : flattenedWindows) {
+            int label = determineLabel(window); // Implement your own labeling logic
+            labeledWindows.add(new LabeledWindow(window, label));
+        }
+
+        return labeledWindows;
+    }
+
+    private int determineLabel(double[] window) {
+        // Example: Use the last value of the window as the label
+        return (int) window[window.length - 1];
+    }
+
+    public StatisticalFeatures extractFeatures(List<Double> window) {
+        int n = window.size();
+        double sum = 0.0;
+        double sumSquared = 0.0;
+
+        // Calculate sum and sum of squares
+        for (double value : window) {
+            sum += value;
+            sumSquared += value * value;
+        }
+
+        float mean = (float) (sum / n);
+        float variance = (float) ((sumSquared / n) - (mean * mean));
+        float stdDev = (float) Math.sqrt(variance);
+
+        return new StatisticalFeatures(mean, stdDev, variance);
+    }
+
+    public float[] prepareFeaturesForModel(List<List<Double>> windows) {
+        List<float[]> featureList = new ArrayList<>();
+
+        for (List<Double> window : windows) {
+            StatisticalFeatures features = extractFeatures(window);
+            featureList.add(new float[]{features.mean, features.stdDev, features.variance});
+        }
+
+        // Flatten the list of features into a single array for the TensorFlow Lite model
+        int numWindows = featureList.size();
+        int numFeatures = 3; // Mean, StdDev, Variance
+        float[] inputFeatures = new float[numWindows * numFeatures];
+
+        int index = 0;
+        for (float[] feature : featureList) {
+            for (float value : feature) {
+                inputFeatures[index++] = value;
+            }
+        }
+
+        return inputFeatures;
+    }
+
+
+
 }
