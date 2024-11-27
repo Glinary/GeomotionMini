@@ -34,8 +34,12 @@ import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.mobdeve.s11.mco3.mco3javaversion.ml.Model;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +52,9 @@ import java.util.List;
 import java.util.Map;
 
 import android.Manifest;
+
+import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -69,7 +76,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
     private ButterworthFilter lowPassFilter;
     private ButterworthFilter highPassFilter;
-    private List<Double> filteredDataList;
+    private List<Float> filteredDataList;
 
 
     public HomeFragment() {
@@ -244,24 +251,18 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                 //use "filteredData" for further processing
 
                 // Add the filtered data to the list
-                filteredDataList.add(filteredData);
+                filteredDataList.add((float)filteredData);
 
                 // Check if sliding window logic should be triggered
                 if (filteredDataList.size() >= WINDOW_SIZE) {
-                    List<List<Double>> windows = generateSlidingWindows(filteredDataList, WINDOW_SIZE);
+                    List<List<Float>> windows = generateSlidingWindows(filteredDataList, WINDOW_SIZE);
                     // Process the windows as needed
 
                     // Extract features
                     float[] inputFeatures = prepareFeaturesForModel(windows);
 
                     // Run TensorFlow Lite model
-                    TFLiteModel model = new TFLiteModel(requireContext(), "model.tflite"); //TODO: CHANGE TO PATH OF MODEL
-                    float[] predictions = model.runInference(inputFeatures, windows.size());
-
-                    // Process predictions
-                    for (float prediction : predictions) {
-                        Log.d("TFLitePrediction", "Prediction: " + prediction);
-                    }
+                    runModel(inputFeatures);
 
                     // Optionally clear old data to avoid memory overhead
                     filteredDataList.clear();
@@ -321,10 +322,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         // Start listening to accelerometer events
         if (sensorManager != null) {
             if (accelerometer != null) {
-                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                sensorManager.registerListener(this, accelerometer, 10000); // 100 Hz
             }
             if (gyroscope != null) { // Register gyroscope listener
-                sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+                sensorManager.registerListener(this, gyroscope, 10000); // 100 Hz
             }
         }
 
@@ -373,11 +374,11 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         navigationControl = null;
     }
 
-    public List<List<Double>> generateSlidingWindows(List<Double> data, int windowSize) {
-        List<List<Double>> windows = new ArrayList<>();
+    public List<List<Float>> generateSlidingWindows(List<Float> data, int windowSize) {
+        List<List<Float>> windows = new ArrayList<>();
 
         for (int i = 0; i <= data.size() - windowSize; i++) {
-            List<Double> window = new ArrayList<>(data.subList(i, i + windowSize));
+            List<Float> window = new ArrayList<>(data.subList(i, i + windowSize));
             windows.add(window);
         }
 
@@ -424,7 +425,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         return (int) window[window.length - 1];
     }
 
-    public StatisticalFeatures extractFeatures(List<Double> window) {
+    public StatisticalFeatures extractFeatures(List<Float> window) {
         int n = window.size();
         double sum = 0.0;
         double sumSquared = 0.0;
@@ -442,10 +443,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         return new StatisticalFeatures(mean, stdDev, variance);
     }
 
-    public float[] prepareFeaturesForModel(List<List<Double>> windows) {
+    public float[] prepareFeaturesForModel(List<List<Float>> windows) {
         List<float[]> featureList = new ArrayList<>();
 
-        for (List<Double> window : windows) {
+        for (List<Float> window : windows) {
             StatisticalFeatures features = extractFeatures(window);
             featureList.add(new float[]{features.mean, features.stdDev, features.variance});
         }
@@ -463,6 +464,40 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         }
 
         return inputFeatures;
+    }
+
+
+    public void runModel(float[] inputFeatures) {
+        try {
+            Model model = Model.newInstance(requireContext());
+
+            // Prepare input buffer for model (Ensure byteBuffer is initialized properly)
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4 * inputFeatures.length);
+            byteBuffer.order(ByteOrder.nativeOrder());
+            for (float feature : inputFeatures) {
+                byteBuffer.putFloat(feature);
+            }
+
+            // Creates inputs for reference.
+            TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 3}, DataType.FLOAT32);
+            inputFeature0.loadBuffer(byteBuffer);
+
+            // Runs model inference and gets result.
+            Model.Outputs outputs = model.process(inputFeature0);
+            TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
+
+            // Get the result as a float array
+            float[] result = outputFeature0.getFloatArray();
+
+            // Print the result to log
+            Log.d("ModelOutput", "Model output: " + Arrays.toString(result));
+
+            // Releases model resources if no longer used.
+            model.close();
+        } catch (IOException e) {
+            Log.e("ModelError", "Error running model: " + e.getMessage());
+        }
+
     }
 
 
