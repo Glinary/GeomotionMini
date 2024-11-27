@@ -2,13 +2,10 @@ package com.mobdeve.s11.mco3.mco3javaversion;
 
 import static android.content.Context.MODE_PRIVATE;
 
-import static androidx.core.location.LocationManagerCompat.requestLocationUpdates;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.database.Cursor;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -31,27 +28,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.Switch;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.mobdeve.s11.mco3.mco3javaversion.ml.Model;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.Queue;
 
 import android.Manifest;
 
@@ -78,7 +68,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
     private ButterworthFilter lowPassFilter;
     private ButterworthFilter highPassFilter;
-    private List<Float> filteredDataList;
+    private int WINDOW_SIZE;
+    private Queue<Float> slidingWindow;
+    private double[] features;
+    private FeatureClassifier featureClassifier;
 
 
     public HomeFragment() {
@@ -141,7 +134,11 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         double[] aHigh = { 1.0, -1.98222893, 0.98238545 }; /* Insert a_lowhigh from Python */
         lowPassFilter = new ButterworthFilter(bLow, aLow);
         highPassFilter = new ButterworthFilter(bHigh, aHigh);
-        filteredDataList = new ArrayList<>();
+        WINDOW_SIZE = 150;
+        slidingWindow = new LinkedList<>();
+        features = new double[3]; // [mean, variance, stdDev]
+        featureClassifier = new FeatureClassifier(requireContext());
+
 
     }
 
@@ -243,24 +240,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                 // Apply high-pass filter
                 double filteredData = highPassFilter.apply(lowPassFiltered);
 
-                //use "filteredData" for further processing
-
-                // Add the filtered data to the list
-                filteredDataList.add((float)filteredData);
-                // Check if sliding window logic should be triggered
-                if (filteredDataList.size() >= WINDOW_SIZE) {
-                    List<List<Float>> windows = generateSlidingWindows(filteredDataList, WINDOW_SIZE);
-                    // Process the windows as needed
-
-                    // Extract features
-                    float[] inputFeatures = prepareFeaturesForModel(windows);
-
-                    // Run TensorFlow Lite model
-                    runModel(inputFeatures);
-
-                    // Optionally clear old data to avoid memory overhead
-                    filteredDataList.clear();
-                }
+                processNewData((float)filteredData);
 
                 // PREPROCESSING END //
             }
@@ -282,6 +262,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         String currentTimestamp = formatter2.format(date);
 
         recordingId = myDB.addRecording(currentDate, currentTimestamp); // Get the recording ID
+
         isRecording = true;
         recordingButton.setText("Stop Recording");
 
@@ -340,142 +321,54 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         navigationControl = null;
     }
 
-    public List<List<Float>> generateSlidingWindows(List<Float> data, int windowSize) {
-        List<List<Float>> windows = new ArrayList<>();
 
-        for (int i = 0; i <= data.size() - windowSize; i++) {
-            List<Float> window = new ArrayList<>(data.subList(i, i + windowSize));
-            windows.add(window);
+    // Process new data points as they arrive
+    public void processNewData(float newData) {
+        // Add new data to the sliding window
+        slidingWindow.add(newData);
+        if (slidingWindow.size() > WINDOW_SIZE) {
+            slidingWindow.poll(); // Remove the oldest data point
         }
 
-        return windows;
-    }
-
-    public List<double[]> flattenWindows(List<List<Double>> windows) {
-        List<double[]> flattenedWindows = new ArrayList<>();
-
-        for (List<Double> window : windows) {
-            double[] flattened = new double[window.size()];
-            for (int i = 0; i < window.size(); i++) {
-                flattened[i] = window.get(i);
-            }
-            flattenedWindows.add(flattened);
-        }
-
-        return flattenedWindows;
-    }
-
-    public static class LabeledWindow {
-        public double[] window;
-        public int label; // or String label, depending on your use case
-
-        public LabeledWindow(double[] window, int label) {
-            this.window = window;
-            this.label = label;
+        // Process only when the window is full
+        if (slidingWindow.size() == WINDOW_SIZE) {
+            computeFeatures();
+            classify(features); // Classify using computed features
         }
     }
 
-    public List<LabeledWindow> labelWindows(List<double[]> flattenedWindows, int defaultLabel) {
-        List<LabeledWindow> labeledWindows = new ArrayList<>();
-
-        for (double[] window : flattenedWindows) {
-            int label = determineLabel(window); // Implement your own labeling logic
-            labeledWindows.add(new LabeledWindow(window, label));
-        }
-
-        return labeledWindows;
-    }
-
-    private int determineLabel(double[] window) {
-        // Example: Use the last value of the window as the label
-        return (int) window[window.length - 1];
-    }
-
-    public StatisticalFeatures extractFeatures(List<Float> window) {
-        int n = window.size();
+    // Compute features for the current window
+    public void computeFeatures() {
         double sum = 0.0;
-        double sumSquared = 0.0;
+        double sumOfSquares = 0.0;
 
-        // Calculate sum and sum of squares
-        for (double value : window) {
+        for (float value : slidingWindow) {
             sum += value;
-            sumSquared += value * value;
+            sumOfSquares += Math.pow(value, 2);
         }
 
-        float mean = (float) (sum / n);
-        float variance = (float) ((sumSquared / n) - (mean * mean));
-        float stdDev = (float) Math.sqrt(variance);
+        double mean = sum / WINDOW_SIZE;
+        double variance = (sumOfSquares / WINDOW_SIZE) - Math.pow(mean, 2);
+        double stdDev = Math.sqrt(variance);
 
-        return new StatisticalFeatures(mean, stdDev, variance);
+        features[0] = mean;
+        features[1] = stdDev;
+        features[2] = variance;
     }
 
-    public float[] prepareFeaturesForModel(List<List<Float>> windows) {
-        List<float[]> featureList = new ArrayList<>();
+    // Classify the current features
+    private void classify(double[] features) {
+        System.out.printf("Classifying with features - Mean: %.3f, Variance: %.3f, StdDev: %.3f%n",
+                features[0], features[1], features[2]);
 
-        for (List<Float> window : windows) {
-            StatisticalFeatures features = extractFeatures(window);
-            featureList.add(new float[]{features.mean, features.stdDev, features.variance});
+        // Pass the features to your classifier
+        String outputClass = featureClassifier.classify((float) features[0], (float) features[1], (float) features[2]);
+
+        if (outputClass.equals("Bump")) {
+            Toast.makeText(requireContext(), "Bump detected", Toast.LENGTH_SHORT).show();
+            myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), "Bump");
         }
-
-        // Flatten the list of features into a single array for the TensorFlow Lite model
-        int numWindows = featureList.size();
-        int numFeatures = 3; // Mean, StdDev, Variance
-        float[] inputFeatures = new float[numWindows * numFeatures];
-
-        int index = 0;
-        for (float[] feature : featureList) {
-            for (float value : feature) {
-                inputFeatures[index++] = value;
-            }
-        }
-
-        return inputFeatures;
     }
-
-
-    public void runModel(float[] inputFeatures) {
-        Log.d("ModelLoad", "Running model...");
-        try {
-            Model model = Model.newInstance(requireContext());
-
-            // Prepare input buffer for model (Ensure byteBuffer is initialized properly)
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4 * inputFeatures.length);
-            byteBuffer.order(ByteOrder.nativeOrder());
-            for (float feature : inputFeatures) {
-                byteBuffer.putFloat(feature);
-            }
-
-            // Creates inputs for reference.
-            TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 3}, DataType.FLOAT32);
-            inputFeature0.loadBuffer(byteBuffer);
-
-            // Runs model inference and gets result.
-            Model.Outputs outputs = model.process(inputFeature0);
-            TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
-
-            // Get the result as a float array
-            float[] result = outputFeature0.getFloatArray();
-
-            // Print the result to log
-            // Assuming the model has two classes: "Bump" (index 0) and "Normal" (index 1)
-            String outputClass = result[0] > result[1] ? "Bump" : "Normal";
-
-            if (outputClass.equals("Bump")){
-                Toast.makeText(requireContext(), "Model says bump", Toast.LENGTH_SHORT).show();
-                myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), "Bump");
-            }
-            // Print the result to log
-            Log.d("ModelOutput", "Model output: " + Arrays.toString(result));
-            Log.d("ModelOutput", "Predicted class: " + outputClass);
-
-            // Releases model resources if no longer used.
-            model.close();
-        } catch (IOException e) {
-            Log.e("ModelError", "Error running model: " + e.getMessage());
-        }
-
-    }
-
-
 
 }
+
