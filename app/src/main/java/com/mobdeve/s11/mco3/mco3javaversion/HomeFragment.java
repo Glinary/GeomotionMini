@@ -240,7 +240,9 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                 // Apply high-pass filter
                 double filteredData = highPassFilter.apply(lowPassFiltered);
 
-                processNewData((float)filteredData);
+                //TODO: CHANGE "rawData" TO "filteredData" if using in a vehicle
+                //TODO: otherwise, keep as "rawData" for demo purposes
+                processNewData((float)rawData);
 
                 // PREPROCESSING END //
             }
@@ -358,8 +360,8 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
     // Classify the current features
     private void classify(double[] features) {
-        System.out.printf("Classifying with features - Mean: %.3f, Variance: %.3f, StdDev: %.3f%n",
-                features[0], features[1], features[2]);
+        Log.d("FeatureClassifier", String.format("Mean: %.3f, Variance: %.3f, StdDev: %.3f", features[0], features[1], features[2]));
+
 
         // Pass the features to your classifier
         String outputClass = featureClassifier.classify((float) features[0], (float) features[1], (float) features[2]);
