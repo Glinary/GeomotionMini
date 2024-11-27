@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.database.Cursor;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -23,30 +22,31 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.Switch;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.mobdeve.s11.mco3.mco3javaversion.ml.Model;
 
-import java.lang.reflect.Type;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.Queue;
 
 import android.Manifest;
+
+import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -65,6 +65,13 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     private LocationManager locationManager;  // Add LocationManager for GPS
     private Location currentLocation;  // Store the current GPS location
     private NavigationControl navigationControl;
+
+    private ButterworthFilter lowPassFilter;
+    private ButterworthFilter highPassFilter;
+    private int WINDOW_SIZE;
+    private Queue<Float> slidingWindow;
+    private double[] features;
+    private FeatureClassifier featureClassifier;
 
 
     public HomeFragment() {
@@ -91,8 +98,12 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         super.onCreate(savedInstanceState);
 
         // Check for location permission
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+//        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+//                != PackageManager.PERMISSION_GRANTED) {
+//            ActivityCompat.requestPermissions(requireActivity(),
+//                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+//        }
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(),
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
         }
@@ -116,6 +127,18 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 //        SharedPreferences.Editor editor = prefs.edit();
 //        editor.clear();  // Clears all data in SharedPreferences
 //        editor.apply();
+
+        double [] bLow = { 3.75683802e-06, 1.12705141e-05, 1.12705141e-05, 3.75683802e-06 }; /* Insert b_low from Python */
+        double [] aLow = { 1.0, -2.93717073, 2.87629972, -0.93909894 }; /* Insert a_low from Python */
+        double[] bHigh = { 0.9911536, -1.98230719, 0.9911536 }; /* Insert b_lowhigh from Python */
+        double[] aHigh = { 1.0, -1.98222893, 0.98238545 }; /* Insert a_lowhigh from Python */
+        lowPassFilter = new ButterworthFilter(bLow, aLow);
+        highPassFilter = new ButterworthFilter(bHigh, aHigh);
+        WINDOW_SIZE = 150;
+        slidingWindow = new LinkedList<>();
+        features = new double[3]; // [mean, variance, stdDev]
+        featureClassifier = new FeatureClassifier(requireContext());
+
 
     }
 
@@ -193,53 +216,35 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
         String json = prefs.getString("anomalySort", null);
         ArrayList<String> sortedAnomalyList = new ArrayList<>();
-
-        if (json != null) {
-            Gson gson = new Gson();
-            Type type = new TypeToken<ArrayList<String>>(){}.getType();
-             sortedAnomalyList = gson.fromJson(json, type);
-        }
-
-        if (sortedAnomalyList.isEmpty()){
-            sortedAnomalyList.add("Pothole");
-            sortedAnomalyList.add("Speed Bump");
-            sortedAnomalyList.add("Road Crack");
-        }
+        Integer WINDOW_SIZE = 150;
 
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Toast.makeText(requireContext(), "GPS is disabled!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (currentLocation != null && isRecording) {
+
+        if (this.currentLocation != null && isRecording) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                float x = event.values[0];
-                float y = event.values[1];
-                float z = event.values[2];
 
-                for (String anomaly : sortedAnomalyList) {
-                    float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
-//                    float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
-//                    float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
+                // PREPROCESSING START //
+                double rawData = Math.sqrt(
+                        Math.pow(event.values[0], 2) +
+                                Math.pow(event.values[1], 2) +
+                                Math.pow(event.values[2], 2)
+                );
 
-                    if (Math.abs(x) > threshX) {
-                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
-                    }
-                }
-            } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                float angularX = event.values[0];
-                float angularY = event.values[1];
-                float angularZ = event.values[2];
+                // Apply low-pass filter
+                double lowPassFiltered = lowPassFilter.apply(rawData);
 
-                for (String anomaly : sortedAnomalyList) {
-                    float gyroThreshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroX", "0"));
-                    float gyroThreshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroY", "0"));
-                    float gyroThreshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroZ", "0"));
+                // Apply high-pass filter
+                double filteredData = highPassFilter.apply(lowPassFiltered);
 
-                    if (Math.abs(angularX) > gyroThreshX || Math.abs(angularY) > gyroThreshY || Math.abs(angularZ) > gyroThreshZ) {
-                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
-                    }
-                }
+                //TODO: CHANGE "rawData" TO "filteredData" if using in a vehicle
+                //TODO: otherwise, keep as "rawData" for demo purposes
+                processNewData((float)rawData);
+
+                // PREPROCESSING END //
             }
         }
     }
@@ -259,23 +264,24 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         String currentTimestamp = formatter2.format(date);
 
         recordingId = myDB.addRecording(currentDate, currentTimestamp); // Get the recording ID
+
         isRecording = true;
         recordingButton.setText("Stop Recording");
 
         // Start listening to accelerometer events
         if (sensorManager != null) {
             if (accelerometer != null) {
-                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                sensorManager.registerListener(this, accelerometer, 10000); // 100 Hz
             }
             if (gyroscope != null) { // Register gyroscope listener
-                sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+                sensorManager.registerListener(this, gyroscope, 10000); // 100 Hz
             }
         }
 
         // Start listening to GPS updates
         if (locationManager != null) {
             try {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
@@ -316,4 +322,55 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         super.onDetach();
         navigationControl = null;
     }
+
+
+    // Process new data points as they arrive
+    public void processNewData(float newData) {
+        // Add new data to the sliding window
+        slidingWindow.add(newData);
+        if (slidingWindow.size() > WINDOW_SIZE) {
+            slidingWindow.poll(); // Remove the oldest data point
+        }
+
+        // Process only when the window is full
+        if (slidingWindow.size() == WINDOW_SIZE) {
+            computeFeatures();
+            classify(features); // Classify using computed features
+        }
+    }
+
+    // Compute features for the current window
+    public void computeFeatures() {
+        double sum = 0.0;
+        double sumOfSquares = 0.0;
+
+        for (float value : slidingWindow) {
+            sum += value;
+            sumOfSquares += Math.pow(value, 2);
+        }
+
+        double mean = sum / WINDOW_SIZE;
+        double variance = (sumOfSquares / WINDOW_SIZE) - Math.pow(mean, 2);
+        double stdDev = Math.sqrt(variance);
+
+        features[0] = mean;
+        features[1] = stdDev;
+        features[2] = variance;
+    }
+
+    // Classify the current features
+    private void classify(double[] features) {
+        Log.d("FeatureClassifier", String.format("Mean: %.3f, Variance: %.3f, StdDev: %.3f", features[0], features[1], features[2]));
+
+
+        // Pass the features to your classifier
+        String outputClass = featureClassifier.classify((float) features[0], (float) features[1], (float) features[2]);
+
+        if (outputClass.equals("Bump")) {
+            Toast.makeText(requireContext(), "Bump detected", Toast.LENGTH_SHORT).show();
+            myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), "Bump");
+        }
+    }
+
 }
+
