@@ -2,6 +2,8 @@ package com.mobdeve.s11.mco3.mco3javaversion;
 
 import static android.content.Context.MODE_PRIVATE;
 
+import static androidx.core.location.LocationManagerCompat.requestLocationUpdates;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -103,8 +105,12 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         super.onCreate(savedInstanceState);
 
         // Check for location permission
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+//        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+//                != PackageManager.PERMISSION_GRANTED) {
+//            ActivityCompat.requestPermissions(requireActivity(),
+//                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+//        }
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(),
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
         }
@@ -232,7 +238,8 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             return;
         }
 
-        if (currentLocation != null && isRecording) {
+
+        if (this.currentLocation != null && isRecording) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
                 // PREPROCESSING START //
@@ -252,7 +259,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
                 // Add the filtered data to the list
                 filteredDataList.add((float)filteredData);
-
                 // Check if sliding window logic should be triggered
                 if (filteredDataList.size() >= WINDOW_SIZE) {
                     List<List<Float>> windows = generateSlidingWindows(filteredDataList, WINDOW_SIZE);
@@ -332,7 +338,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         // Start listening to GPS updates
         if (locationManager != null) {
             try {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1, this);
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
@@ -468,6 +474,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
 
     public void runModel(float[] inputFeatures) {
+        Log.d("ModelLoad", "Running model...");
         try {
             Model model = Model.newInstance(requireContext());
 
@@ -493,9 +500,13 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             // Assuming the model has two classes: "Bump" (index 0) and "Normal" (index 1)
             String outputClass = result[0] > result[1] ? "Bump" : "Normal";
 
+            if (outputClass.equals("Bump")){
+                Toast.makeText(requireContext(), "Model says bump", Toast.LENGTH_SHORT).show();
+                myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), "Bump");
+            }
             // Print the result to log
             Log.d("ModelOutput", "Model output: " + Arrays.toString(result));
-            Log.d("ModelClassification", "Predicted class: " + outputClass);
+            Log.d("ModelOutput", "Predicted class: " + outputClass);
 
             // Releases model resources if no longer used.
             model.close();
