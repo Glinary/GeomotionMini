@@ -490,7 +490,12 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             float[] result = outputFeature0.getFloatArray();
 
             // Print the result to log
+            // Assuming the model has two classes: "Bump" (index 0) and "Normal" (index 1)
+            String outputClass = result[0] > result[1] ? "Bump" : "Normal";
+
+            // Print the result to log
             Log.d("ModelOutput", "Model output: " + Arrays.toString(result));
+            Log.d("ModelClassification", "Predicted class: " + outputClass);
 
             // Releases model resources if no longer used.
             model.close();
