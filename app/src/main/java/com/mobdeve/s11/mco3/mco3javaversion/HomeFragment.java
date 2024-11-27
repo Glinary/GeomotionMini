@@ -221,18 +221,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         ArrayList<String> sortedAnomalyList = new ArrayList<>();
         Integer WINDOW_SIZE = 150;
 
-        if (json != null) {
-            Gson gson = new Gson();
-            Type type = new TypeToken<ArrayList<String>>(){}.getType();
-             sortedAnomalyList = gson.fromJson(json, type);
-        }
-
-        if (sortedAnomalyList.isEmpty()){
-            sortedAnomalyList.add("Pothole");
-            sortedAnomalyList.add("Speed Bump");
-            sortedAnomalyList.add("Road Crack");
-        }
-
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Toast.makeText(requireContext(), "GPS is disabled!", Toast.LENGTH_SHORT).show();
             return;
@@ -275,34 +263,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                 }
 
                 // PREPROCESSING END //
-
-                float x = event.values[0];
-                float y = event.values[1];
-                float z = event.values[2];
-
-                for (String anomaly : sortedAnomalyList) {
-                    float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
-//                    float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
-//                    float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
-
-                    if (Math.abs(x) > threshX) {
-                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
-                    }
-                }
-            } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                float angularX = event.values[0];
-                float angularY = event.values[1];
-                float angularZ = event.values[2];
-
-                for (String anomaly : sortedAnomalyList) {
-                    float gyroThreshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroX", "0"));
-                    float gyroThreshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroY", "0"));
-                    float gyroThreshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroZ", "0"));
-
-                    if (Math.abs(angularX) > gyroThreshX || Math.abs(angularY) > gyroThreshY || Math.abs(angularZ) > gyroThreshZ) {
-                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
-                    }
-                }
             }
         }
     }
