@@ -23,6 +23,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,8 +48,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import android.Manifest;
+
+import com.chaquo.python.PyObject;
+import com.chaquo.python.Python;
+import com.chaquo.python.android.AndroidPlatform;
+
 
 /**
  * A simple {@link Fragment} subclass.
@@ -65,6 +74,9 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     private LocationManager locationManager;  // Add LocationManager for GPS
     private Location currentLocation;  // Store the current GPS location
     private NavigationControl navigationControl;
+    ArrayList<ArrayList<Float>> accelData = new ArrayList<>();
+    ArrayList<ArrayList<Float>> gyroData = new ArrayList<>();
+
 
 
     public HomeFragment() {
@@ -212,38 +224,57 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         }
 
         if (currentLocation != null && isRecording) {
+            int sensorType = event.sensor.getType();
+
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                float x = event.values[0];
-                float y = event.values[1];
-                float z = event.values[2];
-
-                for (String anomaly : sortedAnomalyList) {
-                    float threshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accX", "0"));
-//                    float threshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accY", "0"));
-//                    float threshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_accZ", "0"));
-
-                    if (Math.abs(x) > threshX) {
-                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
-                    }
-                }
+                ArrayList<Float> row = new ArrayList<>();
+                row.add(event.values[0]);
+                row.add(event.values[1]);
+                row.add(event.values[2]);
+                accelData.add(row);
             } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                float angularX = event.values[0];
-                float angularY = event.values[1];
-                float angularZ = event.values[2];
+                ArrayList<Float> row = new ArrayList<>();
+                row.add(event.values[0]);
+                row.add(event.values[1]);
+                row.add(event.values[2]);
+                gyroData.add(row);
+            }
 
-                for (String anomaly : sortedAnomalyList) {
-                    float gyroThreshX = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroX", "0"));
-                    float gyroThreshY = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroY", "0"));
-                    float gyroThreshZ = Float.parseFloat(prefs.getString("anomaly_" + anomaly + "_gyroZ", "0"));
 
-                    if (Math.abs(angularX) > gyroThreshX || Math.abs(angularY) > gyroThreshY || Math.abs(angularZ) > gyroThreshZ) {
-                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), anomaly);
+            if (accelData.size() >= 10) {
+
+
+                ArrayList<ArrayList<Float>> accelCopy = new ArrayList<>(accelData);
+                ArrayList<ArrayList<Float>> gyroCopy = new ArrayList<>(gyroData);
+
+                accelData.clear();
+                gyroData.clear();
+
+                    Log.d("JavaAccel", "accelData: " + accelData.toString());
+                    Log.d("JavaGyro", "gyroData: " + gyroData.toString());
+
+                    // Call Python
+                    Python py = Python.getInstance();
+                    PyObject pyModule = py.getModule("feature_extraction");
+
+                    try {
+                        PyObject result = pyModule.callAttr("extract_features", accelCopy, gyroCopy);
+
+                        // Convert result to Java List if needed
+                        List<Double> features = result.asList().stream()
+                                .map(obj -> ((Number) obj.toJava(Double.class)).doubleValue())
+                                .collect(Collectors.toList());
+
+                        Log.d("Features", "Extracted: " + features.toString());
+
+                    } catch (Exception e) {
+                        Log.e("FeatureExtraction", "Error extracting features", e);
                     }
-                }
+
+
             }
         }
     }
-
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {

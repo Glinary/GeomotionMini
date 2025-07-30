@@ -1,6 +1,8 @@
+
 plugins {
     alias(libs.plugins.android.application)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id("com.chaquo.python")
 }
 
 android {
@@ -13,8 +15,25 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            // On Apple silicon, you can omit x86_64.
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
+
+        chaquopy {
+            defaultConfig {
+                version =  "3.8"
+                pip {
+                    install("numpy")
+                    install("scipy")
+
+                }
+            }
+        }
+
+
     }
 
     buildTypes {

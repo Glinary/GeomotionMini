@@ -1,14 +1,5 @@
 package com.mobdeve.s11.mco3.mco3javaversion;
-
-import static androidx.core.content.ContentProviderCompat.requireContext;
-
-import android.annotation.SuppressLint;
-import android.content.SharedPreferences;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -16,14 +7,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-//import androidx.core.graphics.Insets;
-//import androidx.core.view.ViewCompat;
-//import androidx.core.view.WindowInsetsCompat;
 
+import com.chaquo.python.Python;
+import com.chaquo.python.android.AndroidPlatform;
 import com.mobdeve.s11.mco3.mco3javaversion.databinding.ActivityMainBinding;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements NavigationControl {
 
@@ -45,6 +33,16 @@ public class MainActivity extends AppCompatActivity implements NavigationControl
 //            return insets;
 //        });
         replaceFragment(new HomeFragment());
+
+
+        // Initialize Python
+        try {
+            if (!Python.isStarted()) {
+                Python.start(new AndroidPlatform(this));
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to initialize Python: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
 
 
 
