@@ -37,6 +37,7 @@ import android.widget.Toast;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -48,6 +49,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import android.Manifest;
@@ -55,6 +58,10 @@ import android.Manifest;
 import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
+
+import ai.onnxruntime.OnnxTensor;
+import ai.onnxruntime.OrtEnvironment;
+import ai.onnxruntime.OrtSession;
 
 
 /**
@@ -76,7 +83,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     private NavigationControl navigationControl;
     ArrayList<ArrayList<Float>> accelData = new ArrayList<>();
     ArrayList<ArrayList<Float>> gyroData = new ArrayList<>();
-
 
 
     public HomeFragment() {
@@ -213,9 +219,11 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         }
 
         if (sortedAnomalyList.isEmpty()){
+            sortedAnomalyList.add("Bump");
+            sortedAnomalyList.add("Crack");
+            sortedAnomalyList.add("Normal");
             sortedAnomalyList.add("Pothole");
-            sortedAnomalyList.add("Speed Bump");
-            sortedAnomalyList.add("Road Crack");
+
         }
 
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
@@ -225,6 +233,9 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
         if (currentLocation != null && isRecording) {
             int sensorType = event.sensor.getType();
+
+            long timestampNs = event.timestamp;
+            float timestampSec = timestampNs / 1_000_000_000f; // seconds
 
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 ArrayList<Float> row = new ArrayList<>();
@@ -242,36 +253,73 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
 
             if (accelData.size() >= 10) {
-
-
                 ArrayList<ArrayList<Float>> accelCopy = new ArrayList<>(accelData);
                 ArrayList<ArrayList<Float>> gyroCopy = new ArrayList<>(gyroData);
 
                 accelData.clear();
                 gyroData.clear();
 
-                    Log.d("JavaAccel", "accelData: " + accelData.toString());
-                    Log.d("JavaGyro", "gyroData: " + gyroData.toString());
 
-                    // Call Python
-                    Python py = Python.getInstance();
-                    PyObject pyModule = py.getModule("feature_extraction");
+                Log.d("JavaAccel", "accelData: " + accelData.toString());
+                Log.d("JavaGyro", "gyroData: " + gyroData.toString());
 
+
+                // Call Python
+                Python py = Python.getInstance();
+                PyObject pyModule = py.getModule("feature_extraction");
+                List<Double> features = null;
+
+                try {
+                    PyObject result = pyModule.callAttr("extract_features", accelCopy, gyroCopy);
+                    features = result.asList().stream()
+                            .map(obj -> ((Number) obj.toJava(Double.class)).doubleValue())
+                            .collect(Collectors.toList());
+
+                    Log.d("Features", "Extracted: " + features.toString());
+
+                } catch (Exception e) {
+                    Log.e("FeatureExtraction", "Error extracting features", e);
+                    return; // or handle it appropriately
+                }
+
+                List<Double> finalFeatures = features;
+
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                executor.execute(() -> {
                     try {
-                        PyObject result = pyModule.callAttr("extract_features", accelCopy, gyroCopy);
+                        // 1. Load model
+                        OrtEnvironment env = OrtEnvironment.getEnvironment();
+                        OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
+                        InputStream modelInput = requireContext().getAssets().open("svm_model.onnx");
+                        byte[] modelBytes = new byte[modelInput.available()];
+                        modelInput.read(modelBytes);
+                        modelInput.close();
 
-                        // Convert result to Java List if needed
-                        List<Double> features = result.asList().stream()
-                                .map(obj -> ((Number) obj.toJava(Double.class)).doubleValue())
-                                .collect(Collectors.toList());
+                        OrtSession session = env.createSession(modelBytes, opts);
 
-                        Log.d("Features", "Extracted: " + features.toString());
+                        // 2. Prepare input tensor
+                        float[][] inputData = new float[1][finalFeatures.size()];
+                        for (int i = 0; i < finalFeatures.size(); i++) {
+                            inputData[0][i] = finalFeatures.get(i).floatValue();
+                        }
+
+                        OnnxTensor inputTensor = OnnxTensor.createTensor(env, inputData);
+
+                        // 3. Run inference
+                        OrtSession.Result output = session.run(Collections.singletonMap("float_input", inputTensor));
+                        long[] prediction = (long[]) output.get(0).getValue();
+                        int predictedClass = (int) prediction[0];
+
+                        // 4. Post result back to UI
+                        requireActivity().runOnUiThread(() -> {
+                            Log.d("ONNX", "Predicted class: " + predictedClass);
+                            recordingButton.setEnabled(true);
+                        });
 
                     } catch (Exception e) {
-                        Log.e("FeatureExtraction", "Error extracting features", e);
+                        Log.e("ONNX", "Error during inference", e);
                     }
-
-
+                });
             }
         }
     }
@@ -296,10 +344,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         // Start listening to accelerometer events
         if (sensorManager != null) {
             if (accelerometer != null) {
-                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
             }
             if (gyroscope != null) { // Register gyroscope listener
-                sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+                sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
             }
         }
 
