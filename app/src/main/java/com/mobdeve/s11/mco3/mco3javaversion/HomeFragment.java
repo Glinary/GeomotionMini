@@ -63,6 +63,14 @@ import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtSession;
 
+import com.koushikdutta.async.http.server.AsyncHttpServer;
+import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
+import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
+import com.koushikdutta.async.http.server.HttpServerRequestCallback;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 
 /**
  * A simple {@link Fragment} subclass.
@@ -83,6 +91,9 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     private NavigationControl navigationControl;
     ArrayList<ArrayList<Float>> accelData = new ArrayList<>();
     ArrayList<ArrayList<Float>> gyroData = new ArrayList<>();
+
+    private AsyncHttpServer httpServer;
+    private int serverPort = 8000; // Choose a port
 
 
     public HomeFragment() {
@@ -107,6 +118,8 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        setupHttpServer();
 
         // Check for location permission
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
@@ -135,6 +148,183 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 //        editor.clear();  // Clears all data in SharedPreferences
 //        editor.apply();
 
+    }
+
+    private void setupHttpServer() {
+        httpServer = new AsyncHttpServer();
+
+        httpServer.post("/data", new HttpServerRequestCallback() {
+            @Override
+            public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+                try {
+                    String jsonStr = request.getBody().get().toString();
+                    Log.d("SensorLogger", "Received: " + jsonStr);
+
+                    JSONObject json = new JSONObject(jsonStr);
+                    JSONArray payload = json.getJSONArray("payload");
+
+                    ArrayList<ArrayList<Float>> accelBatch = new ArrayList<>();
+                    ArrayList<ArrayList<Float>> gyroBatch = new ArrayList<>();
+
+                    for (int i = 0; i < payload.length(); i++) {
+                        JSONObject sensorData = payload.getJSONObject(i);
+                        String sensorName = sensorData.getString("name");
+                        long timestamp = sensorData.getLong("time");
+
+                        // Handle both JSONArray and JSONObject cases for values
+                        Object valuesObj = sensorData.get("values");
+                        float x = 0, y = 0, z = 0;
+
+                        if (valuesObj instanceof JSONObject) {
+                            // Normal case: {"x":0.1,"y":0.2,"z":0.3}
+                            JSONObject values = (JSONObject) valuesObj;
+                            x = (float) values.getDouble("x");
+                            y = (float) values.getDouble("y");
+                            z = (float) values.getDouble("z");
+                        } else if (valuesObj instanceof JSONArray) {
+                            // Handle array case: [0.1,0.2,0.3] or empty array []
+                            JSONArray values = (JSONArray) valuesObj;
+                            if (values.length() >= 3) {
+                                x = (float) values.getDouble(0);
+                                y = (float) values.getDouble(1);
+                                z = (float) values.getDouble(2);
+                            }
+                        }
+
+                        ArrayList<Float> row = new ArrayList<>();
+                        row.add(x);
+                        row.add(y);
+                        row.add(z);
+
+                        if (sensorName.equals("accelerometer")) {
+                            accelBatch.add(row);
+                        } else if (sensorName.equals("gyroscope")) {
+                            gyroBatch.add(row);
+                        }
+                    }
+
+                    if (!accelBatch.isEmpty() && !gyroBatch.isEmpty()) {
+                        processSensorBatch(accelBatch, gyroBatch);
+                    }
+
+                    response.send("success");
+
+                } catch (Exception e) {
+                    Log.e("SensorLogger", "Error processing data", e);
+                    response.code(500).send("Error: " + e.getMessage());
+                }
+            }
+        });
+
+        httpServer.listen(serverPort);
+        Log.i("HTTP Server", "Listening on port " + serverPort);
+    }
+
+    private void processSensorLoggerData(SensorLoggerData sensorData) {
+        if (!isRecording) return;
+
+        // Convert SensorLogger data to your expected format
+        ArrayList<ArrayList<Float>> accelData = new ArrayList<>();
+        ArrayList<ArrayList<Float>> gyroData = new ArrayList<>();
+
+        // Process accelerometer data
+        for (SensorLoggerData.SensorEntry entry : sensorData.accelerometer) {
+            ArrayList<Float> row = new ArrayList<>();
+            row.add(entry.x);
+            row.add(entry.y);
+            row.add(entry.z);
+            accelData.add(row);
+        }
+
+        // Process gyroscope data
+        for (SensorLoggerData.SensorEntry entry : sensorData.gyroscope) {
+            ArrayList<Float> row = new ArrayList<>();
+            row.add(entry.x);
+            row.add(entry.y);
+            row.add(entry.z);
+            gyroData.add(row);
+        }
+
+        // Process the data batch when we have enough samples
+        if (accelData.size() >= 100) {
+            processSensorBatch(accelData, gyroData);
+        }
+    }
+
+    private void processSensorBatch(ArrayList<ArrayList<Float>> accelData,
+                                    ArrayList<ArrayList<Float>> gyroData) {
+        // Call Python for feature extraction
+        Python py = Python.getInstance();
+        PyObject pyModule = py.getModule("feature_extraction");
+        List<Double> features = null;
+
+        try {
+            PyObject result = pyModule.callAttr("extract_features", accelData, gyroData);
+            features = result.asList().stream()
+                    .map(obj -> ((Number) obj.toJava(Double.class)).doubleValue())
+                    .collect(Collectors.toList());
+
+            Log.d("Features", "Extracted: " + features.toString());
+
+            // Run ONNX classification
+            runOnnxInference(features);
+        } catch (Exception e) {
+            Log.e("FeatureExtraction", "Error extracting features", e);
+        }
+    }
+
+    private void runOnnxInference(List<Double> features) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
+            try {
+                // 1. Load model
+                OrtEnvironment env = OrtEnvironment.getEnvironment();
+                OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
+                InputStream modelInput = requireContext().getAssets().open("svm_model.onnx");
+                byte[] modelBytes = new byte[modelInput.available()];
+                modelInput.read(modelBytes);
+                modelInput.close();
+
+                OrtSession session = env.createSession(modelBytes, opts);
+
+                // 2. Prepare input tensor
+                float[][] inputData = new float[1][features.size()];
+
+                for (int i = 0; i < features.size(); i++) {
+                    inputData[0][i] = features.get(i).floatValue();
+                }
+
+                Log.d("FinalFeaturesInput", Arrays.toString(inputData[0]));
+
+                OnnxTensor inputTensor = OnnxTensor.createTensor(env, inputData);
+
+                // 3. Run inference
+                OrtSession.Result output = session.run(Collections.singletonMap("float_input", inputTensor));
+                long[] prediction = (long[]) output.get(0).getValue();
+                int predictedClass = (int) prediction[0];
+
+                if (currentLocation != null) {
+                    myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(),
+                            currentLocation.getLongitude(), String.valueOf(predictedClass));
+                }
+
+                // 4. Post result back to UI
+                requireActivity().runOnUiThread(() -> {
+                    Log.d("ONNX", "Predicted class: " + predictedClass);
+                });
+
+            } catch (Exception e) {
+                Log.e("ONNX", "Error during inference", e);
+            }
+        });
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (httpServer != null) {
+            httpServer.stop();
+        }
     }
 
     @Override
@@ -398,5 +588,18 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     public void onDetach() {
         super.onDetach();
         navigationControl = null;
+    }
+}
+
+// Add this class to handle SensorLogger JSON structure
+class SensorLoggerData {
+    List<SensorEntry> accelerometer;
+    List<SensorEntry> gyroscope;
+
+    static class SensorEntry {
+        float x;
+        float y;
+        float z;
+        long time; // timestamp if needed
     }
 }
