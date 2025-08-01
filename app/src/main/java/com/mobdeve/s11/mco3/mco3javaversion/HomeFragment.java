@@ -252,7 +252,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             }
 
 
-            if (accelData.size() >= 10) {
+            if (accelData.size() >= 100) {
                 ArrayList<ArrayList<Float>> accelCopy = new ArrayList<>(accelData);
                 ArrayList<ArrayList<Float>> gyroCopy = new ArrayList<>(gyroData);
 
@@ -299,9 +299,12 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
                         // 2. Prepare input tensor
                         float[][] inputData = new float[1][finalFeatures.size()];
+
                         for (int i = 0; i < finalFeatures.size(); i++) {
                             inputData[0][i] = finalFeatures.get(i).floatValue();
                         }
+
+                        Log.d("FinalFeaturesInput", Arrays.toString(inputData[0]));
 
                         OnnxTensor inputTensor = OnnxTensor.createTensor(env, inputData);
 
@@ -309,6 +312,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                         OrtSession.Result output = session.run(Collections.singletonMap("float_input", inputTensor));
                         long[] prediction = (long[]) output.get(0).getValue();
                         int predictedClass = (int) prediction[0];
+                        myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(), currentLocation.getLongitude(), String.valueOf(predictedClass));
 
                         // 4. Post result back to UI
                         requireActivity().runOnUiThread(() -> {

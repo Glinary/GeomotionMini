@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.stats import skew, kurtosis
 from scipy.signal import find_peaks
-from sklearn.preprocessing import PowerTransformer, StandardScaler
 
 
 def extract_features(accel_data, gyro_data):
@@ -25,9 +24,9 @@ def extract_features(accel_data, gyro_data):
         ax = np.array(ax, dtype=np.float32)
         ay = np.array(ay, dtype=np.float32)
         az = np.array(az, dtype=np.float32)
-        gx = np.array(ax, dtype=np.float32)
-        gy = np.array(ax, dtype=np.float32)
-        gz = np.array(ax, dtype=np.float32)
+        gx = np.array(gx, dtype=np.float32)
+        gy = np.array(gy, dtype=np.float32)
+        gz = np.array(gz, dtype=np.float32)
 
         ayPeaks, _ = find_peaks(ay)
         azPeaks, _ = find_peaks(az)
@@ -126,59 +125,13 @@ def extract_features(accel_data, gyro_data):
             float(np.mean(np.abs(np.gradient(np.gradient(gx)))))
         ]
 
-        # Apply Yeo-Johnson + StandardScaler to the final extracted features
-        features_array = np.array(features).reshape(1, -1)  # shape = (1, 30)
-
-        yeo = PowerTransformer(method='yeo-johnson')
-        features_yeo = yeo.fit_transform(features_array)
-
-        scaler = StandardScaler()
-        features_scaled = scaler.fit_transform(features_yeo)
-
-        # Flatten the 2D result back to 1D list
-        final_features = features_scaled.flatten().tolist()
-
-        print("Final normalized + scaled features:", final_features)
-
-        # features = (
-        #         compute_axis_stats(ax) +
-        #         compute_axis_stats(ay) +
-        #         compute_axis_stats(az) +
-        #         compute_axis_stats(gx) +
-        #         compute_axis_stats(gy) +
-        #         compute_axis_stats(gz)
-        # )
-        return final_features
+        print("Final features:", features)
+        return features
 
     except Exception as e:
         print("Error in extract_features:", e)
         return [0.0] * 30  #best num of features
 
-def compute_axis_stats(axis_data):
-    try:
-        axis = np.array(axis_data, dtype=np.float32)
-        peaks, _ = find_peaks(axis)
-        peak_count = len(peaks)
-
-        stats = [
-            float(np.mean(axis)),                           #mean
-            float(np.var(axis)),                            #var
-            float(np.std(axis)),                            #std
-            float(skew(axis)),                              #skewness
-            float(kurtosis(axis)),                          #kurtosis
-            float(np.max(axis) - np.min(axis)),             #peaktopeak
-            float(np.mean(np.abs(axis))),                   #mav
-            float(np.sqrt(np.mean(axis**2))),               #rms
-            float(np.sum(np.diff(np.sign(axis)) != 0)),     #zcr
-            float(peak_count),                              # Peak count
-            float(np.mean(np.abs(np.gradient(np.gradient(axis)))))
-        ]
-
-
-        return stats
-    except Exception as e:
-        print("Error in compute_axis_stats:", e)
-        return [0.0] * 10
 
 def convert_java_data(java_list):
     try:

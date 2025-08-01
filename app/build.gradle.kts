@@ -28,7 +28,6 @@ android {
                 pip {
                     install("numpy")
                     install("scipy")
-                    install("scikit-learn")
                 }
             }
         }
