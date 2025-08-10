@@ -28,7 +28,6 @@ android {
                 pip {
                     install("numpy")
                     install("scipy")
-
                 }
             }
         }
@@ -78,5 +77,7 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     implementation ("com.google.code.gson:gson:2.11.0")
     implementation("com.google.android.gms:play-services-maps:19.0.0")
+    implementation ("com.microsoft.onnxruntime:onnxruntime-android:1.16.3")
+    implementation ("com.koushikdutta.async:androidasync:3.1.0")
 
 }
