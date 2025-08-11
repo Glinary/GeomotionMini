@@ -10,14 +10,12 @@ import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -27,7 +25,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.Toast;
 
 import java.io.InputStream;
@@ -67,7 +64,6 @@ import org.json.JSONObject;
 public class HomeFragment extends Fragment implements SensorEventListener, LocationListener {
 
     Button recordingButton;
-    private SensorManager sensorManager;
     private MyDatabaseHelper myDB;
     private long recordingId; // Track the current recording ID
     private boolean isRecording = false; // Flag to track recording state
@@ -76,8 +72,16 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
     private NavigationControl navigationControl;
 
     private AsyncHttpServer httpServer;
-    private int serverPort = 8000; // Choose a port
-
+    private final int serverPort = 8000; // Choose a port
+    private Location lastInferenceLocation = null;
+    private final int BATCH_SIZE_THRESHOLD = 50;
+    private final float MIN_DISTANCE_METERS = 0.2f; // adjust threshold as needed (0.2f is 20cm)
+    private final int MIN_TIME_MS = 1000; // 1 second minimum between updates
+    private static final long MAX_LOCATION_UPDATE_INTERVAL_MS = 5000; // 5 seconds
+    private long lastLocationUpdateTime = 0;
+    private volatile boolean isHttpActive = false;
+    private long lastHttpRequestTime = 0;
+    private static final long HTTP_INACTIVITY_THRESHOLD = 3000; // 3 seconds
 
     public HomeFragment() {
         // Required empty public constructor
@@ -104,11 +108,16 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
         setupHttpServer();
 
-        // Check for location permission
+        // Check for location permissions
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+                != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+                        != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(),
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                    new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    }, 1);
         }
 
         // Initialize database helper
@@ -133,6 +142,10 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             @Override
             public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
                 try {
+                    // Mark HTTP as active and update last request time
+                    isHttpActive = true;
+                    lastHttpRequestTime = System.currentTimeMillis();
+
                     String jsonStr = request.getBody().get().toString();
                     Log.d("SensorLogger", "Received: " + jsonStr);
 
@@ -161,7 +174,6 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                         row.add(y);
                         row.add(z);
 
-                        // Only take uncalibrated data
                         if (sensorName.equals("accelerometeruncalibrated")) {
                             accelBatch.add(row);
                         } else if (sensorName.equals("gyroscopeuncalibrated")) {
@@ -169,9 +181,23 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                         }
                     }
 
-                    if (accelBatch.size() >= 10 && isRecording) {
-                        Log.d("sensorbatch", "running sensor batch 100");
-                        processSensorBatch(accelBatch, gyroBatch);
+                    if (accelBatch.size() >= BATCH_SIZE_THRESHOLD && isRecording && currentLocation != null) {
+                        boolean shouldProcess = false;
+
+                        if (lastInferenceLocation == null) {
+                            shouldProcess = true;
+                        } else {
+                            float distance = currentLocation.distanceTo(lastInferenceLocation);
+                            if (distance >= MIN_DISTANCE_METERS) {
+                                shouldProcess = true;
+                            }
+                        }
+
+                        if (shouldProcess) {
+                            Log.d("sensorbatch", "running sensor batch 50");
+                            processSensorBatch(accelBatch, gyroBatch);
+                            lastInferenceLocation = new Location(currentLocation); // update last location
+                        }
                     }
 
                     response.send("success");
@@ -183,6 +209,7 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
             }
         });
 
+
         httpServer.listen(serverPort);
         Log.i("HTTP Server", "Listening on port " + serverPort);
     }
@@ -192,20 +219,29 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         // Call Python for feature extraction
         Python py = Python.getInstance();
         PyObject pyModule = py.getModule("feature_extraction");
-        List<Double> features = null;
 
         try {
             PyObject result = pyModule.callAttr("extract_features", accelData, gyroData);
-            features = result.asList().stream()
+            List<Double> features = result.asList().stream()
                     .map(obj -> ((Number) obj.toJava(Double.class)).doubleValue())
                     .collect(Collectors.toList());
 
             Log.d("Features", "Extracted: " + features.toString());
 
-            // Run ONNX classification
-            runOnnxInference(features);
+            // Only run inference if we got valid features
+            if (features != null && !features.isEmpty() && features.size() >= 30) {
+                runOnnxInference(features);
+            } else {
+                Log.w("FeatureExtraction", "Received invalid features - not running inference");
+            }
         } catch (Exception e) {
             Log.e("FeatureExtraction", "Error extracting features", e);
+            // Provide fallback features in case of error
+            List<Double> fallbackFeatures = new ArrayList<>();
+            for (int i = 0; i < 30; i++) {
+                fallbackFeatures.add(0.0);
+            }
+            runOnnxInference(fallbackFeatures);
         }
     }
 
@@ -243,8 +279,29 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
                     Log.d("DB_ADD_COORDINATE", "Adding coordinate for recordingId=" + recordingId +
                             ", lat=" + currentLocation.getLatitude() + ", lon=" + currentLocation.getLongitude() +
                             ", class=" + predictedClass);
+                    String anomalyLabel = "";
+
+                    switch(predictedClass) {
+                        case 0:
+                            anomalyLabel = "bump";
+                            break;
+                        case 1:
+                            anomalyLabel = "crack";
+                            break;
+                        case 2:
+                            anomalyLabel = "normal";
+                            break;
+                        case 3:
+                            anomalyLabel = "pothole";
+                            break;
+                        default:
+                            anomalyLabel = "unknown";
+                            break;
+                    }
+
                     myDB.addCoordinate((int) recordingId, currentLocation.getLatitude(),
-                            currentLocation.getLongitude(), String.valueOf(predictedClass));
+                            currentLocation.getLongitude(), anomalyLabel);
+
                 }
 
                 // 4. Post result back to UI
@@ -273,57 +330,24 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         View view = inflater.inflate(R.layout.fragment_home, container, false);
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPreferences", MODE_PRIVATE);
 
-        SwitchCompat accelerometer = view.findViewById(R.id.sw_accel);
-        SwitchCompat  gyroscope = view.findViewById(R.id.sw_gyro);
-        SwitchCompat  gps = view.findViewById(R.id.sw_gps);
-
-        accelerometer.setChecked(prefs.getBoolean("isAccel", false));
-        gyroscope.setChecked(prefs.getBoolean("isGyro", false));
-        gps.setChecked(prefs.getBoolean("isGPS", false));
-
-
-        accelerometer.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        Button checkStatusButton = view.findViewById(R.id.btn_check_status);
+        checkStatusButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putBoolean("isAccel", isChecked);
-                editor.apply();
+            public void onClick(View v) {
+                checkHttpServerStatus();
             }
         });
-
-        gyroscope.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putBoolean("isGyro", isChecked);
-                editor.apply();
-            }
-        });
-
-        gps.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putBoolean("isGPS", isChecked);
-                editor.apply();
-            }
-        });
-
 
         recordingButton = view.findViewById(R.id.recordingButton);
         recordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Boolean isAccActivated = prefs.getBoolean("isAccel", false);
-                Boolean isGPSActivated = prefs.getBoolean("isGPS", false);
-                Boolean isGyroActivated = prefs.getBoolean("isGyro", false);
-
-                if (!isRecording && isAccActivated && isGPSActivated && isGyroActivated) {
+                if (!isRecording) {
                     startRecording();
                     navigationControl.setAllowNavigation(false); // Disable navigation
                     recordingButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#A44661FF")));
-                } else if (!isRecording && (!isAccActivated || !isGPSActivated || !isGyroActivated)) {
-                    Toast.makeText(requireContext(), "Please enable all sensors to record.", Toast.LENGTH_SHORT).show();
+                } else if (!isRecording) {
+                    Toast.makeText(requireContext(), "Please enable location and sensor connection to record.", Toast.LENGTH_SHORT).show();
                 } else{
                     stopRecording();
                     recordingButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#474983")));
@@ -333,6 +357,31 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         });
 
         return view;
+    }
+
+    private void checkHttpServerStatus() {
+        long currentTime = System.currentTimeMillis();
+
+        // Check if we've received a request recently
+        boolean currentlyReceivingData = isHttpActive &&
+                (currentTime - lastHttpRequestTime < HTTP_INACTIVITY_THRESHOLD);
+
+        String statusMessage;
+        if (httpServer == null) {
+            statusMessage = "HTTP Server is not running";
+        } else if (currentlyReceivingData) {
+            statusMessage = "HTTP Server active - Receiving data!";
+        } else if (isHttpActive) {
+            statusMessage = "HTTP Server running (last data " +
+                    ((currentTime - lastHttpRequestTime)/1000) + "s ago)";
+        } else {
+            statusMessage = "SensorLogger Status: No data received yet";
+        }
+
+        Toast.makeText(requireContext(), statusMessage, Toast.LENGTH_LONG).show();
+
+        // Reset the active flag for next check
+        isHttpActive = false;
     }
 
     @Override
@@ -357,14 +406,50 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
         isRecording = true;
         recordingButton.setText("Stop Recording");
 
-        // Do NOT register phone sensors — only use HTTP POST data
-
         // Keep GPS if needed
         if (locationManager != null) {
             try {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+                boolean gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+                boolean networkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+                if (gpsEnabled) {
+                    // Try GPS first
+                    locationManager.requestLocationUpdates(
+                            LocationManager.GPS_PROVIDER, MIN_TIME_MS, MIN_DISTANCE_METERS, this
+                    );
+                    Log.d("Location", "Using GPS provider");
+                }
+
+                if (!gpsEnabled && networkEnabled) {
+                    // Fall back to network if GPS is not available
+                    locationManager.requestLocationUpdates(
+                            LocationManager.NETWORK_PROVIDER, MIN_TIME_MS, MIN_DISTANCE_METERS, this
+                    );
+                    Log.d("Location", "Using network provider as fallback");
+                }
+
+                if (!gpsEnabled && !networkEnabled) {
+                    Toast.makeText(requireContext(), "No location providers available", Toast.LENGTH_SHORT).show();
+                }
+
+                // Also request a single update to get the last known location immediately
+                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    Location lastKnownLocation = null;
+                    if (gpsEnabled) {
+                        lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    }
+                    if (lastKnownLocation == null && networkEnabled) {
+                        lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                    }
+                    if (lastKnownLocation != null) {
+                        onLocationChanged(lastKnownLocation);
+                    }
+                }
+
             } catch (SecurityException e) {
                 e.printStackTrace();
+                Toast.makeText(requireContext(), "Location permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -382,7 +467,42 @@ public class HomeFragment extends Fragment implements SensorEventListener, Locat
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        this.currentLocation = location;
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastLocationUpdateTime > MAX_LOCATION_UPDATE_INTERVAL_MS) {
+            this.currentLocation = location;
+            lastLocationUpdateTime = currentTime;
+        }
+    }
+
+
+
+    @Override
+    public void onProviderEnabled(@NonNull String provider) {
+        Log.d("Location", "Provider enabled: " + provider);
+    }
+    @Override
+    public void onProviderDisabled(@NonNull String provider) {
+        Log.d("Location", "Provider disabled: " + provider);
+        if (isRecording && provider.equals(LocationManager.GPS_PROVIDER)) {
+            // If GPS was disabled while recording, try to switch to network provider
+            try {
+                if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) &&
+                        ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+                                == PackageManager.PERMISSION_GRANTED) {
+                    locationManager.requestLocationUpdates(
+                            LocationManager.NETWORK_PROVIDER, MIN_TIME_MS, MIN_DISTANCE_METERS, this
+                    );
+                    Toast.makeText(requireContext(), "Switched to network location provider", Toast.LENGTH_SHORT).show();
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        Log.d("Location", "Status changed: " + provider + " status: " + status);
     }
 
     @Override
