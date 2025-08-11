@@ -7,8 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".HomeFragment">
 
-    <!-- TODO: Update blank fragment layout -->
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -26,8 +24,8 @@
             app:title="Home"
             app:titleTextColor="#FFFFFF" />
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/sw_accel"
+        <Button
+            android:id="@+id/btn_check_status"
             android:layout_width="300dp"
             android:layout_height="48dp"
             android:layout_marginStart="50dp"
@@ -35,10 +33,7 @@
             android:layout_marginEnd="50dp"
             android:background="#E8ECF6"
             android:backgroundTint="#9E8BD3"
-            android:checked="false"
-            android:paddingStart="20dp"
-            android:paddingRight="15dp"
-            android:text="Accelerometer"
+            android:text="CHECK STATUS"
             android:textColor="@color/white"
             android:textSize="15sp"
             android:textStyle="bold"
@@ -46,46 +41,6 @@
             app:layout_constraintHorizontal_bias="0.454"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/toolbar" />
-
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/sw_gps"
-            android:layout_width="300dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="50dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="50dp"
-            android:background="#E8ECF6"
-            android:backgroundTint="#9E8BD3"
-            android:checked="false"
-            android:paddingStart="20dp"
-            android:paddingRight="15dp"
-            android:text="GPS"
-            android:textColor="@color/white"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.454"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/sw_gyro" />
-
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/sw_gyro"
-            android:layout_width="300dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="50dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="50dp"
-            android:background="#E8ECF6"
-            android:backgroundTint="#9E8BD3"
-            android:checked="false"
-            android:paddingStart="20dp"
-            android:paddingRight="15dp"
-            android:text="Gyroscope"
-            android:textColor="@color/white"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.454"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/sw_accel" />
 
         <Button
             android:id="@+id/recordingButton"

@@ -2,7 +2,6 @@ package com.mobdeve.s11.mco3.mco3javaversion;
 import android.os.Bundle;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -16,7 +15,6 @@ import com.mobdeve.s11.mco3.mco3javaversion.databinding.ActivityMainBinding;
 public class MainActivity extends AppCompatActivity implements NavigationControl {
 
     ActivityMainBinding binding;
-    private MyDatabaseHelper myDB;
     private boolean allowNavigation = true;
 
     @Override
@@ -57,8 +55,6 @@ public class MainActivity extends AppCompatActivity implements NavigationControl
                 replaceFragment(new HomeFragment());
             } else if (item.getItemId() == R.id.mn_recordings) {
                 replaceFragment(new RecordingsFragment());
-            } else if (item.getItemId() == R.id.mn_settings) {
-                replaceFragment(new SettingsFragment());
             }
 
             return true;
